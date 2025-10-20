@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Gerador de Mapas Mentais por IA</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <!-- Noto Sans and Space Mono -->
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <!-- Cal Sans (for UI font option) -->
+  <link href="https://fonts.googleapis.com/css2?family=Cal+Sans:opsz,wght@9..144,300;9..144,400;9..144,600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./styles.css" />
+  <!-- Dependências locais -->
+  <script src="./libs/cytoscape.min.js"></script>
+  <script src="./libs/marked.min.js"></script>
+  <script src="./libs/jspdf.min.js"></script>
+  <script src="./marker-system.js"></script>
+</head>
+<body>
+  <!-- Layout CSS Grid Responsivo -->
+  <div class="app-grid">
+    <!-- Header Fixo -->
+    <header class="app-header">
+      <div class="header-brand">
+        <span class="brand-icon">🧠</span>
+        <span class="brand-text">GeraMapa</span>
+      </div>
+
+      <nav class="header-nav">
+        <button id="chatBtn" class="nav-btn" aria-label="Chat">
+          <span class="nav-icon">💬</span>
+          <span class="nav-text">Chat</span>
+        </button>
+        <button id="savedMapsBtn" class="nav-btn" aria-label="Mapas Salvos">
+          <span class="nav-icon">💾</span>
+          <span class="nav-text">Mapa Salvo</span>
+        </button>
+        <button id="settingsBtn" class="nav-btn" aria-label="Configurações">
+          <span class="nav-icon">⚙️</span>
+          <span class="nav-text">Config</span>
+        </button>
+        <button id="exportBtn" class="nav-btn" aria-label="Exportar">
+          <span class="nav-icon">📤</span>
+          <span class="nav-text">Exportar</span>
+        </button>
+        <button id="specialistBtn" class="nav-btn specialist-btn" aria-label="Especialista do Mapa" style="display: none;">
+          <span class="nav-icon">🤖</span>
+          <span class="nav-text">Especialista</span>
+        </button>
+        <button id="mapModelsBtn" class="nav-btn map-models-btn" aria-label="Modelos de Mapas" style="display: none;">
+          <span class="nav-icon">🗺️</span>
+          <span class="nav-text">Modelos</span>
+        </button>
+        <button id="markerBtn" class="nav-btn marker-btn" aria-label="Marcador">
+          <span class="nav-icon">🖍️</span>
+          <span class="nav-text">Marcador</span>
+        </button>
+        <button id="lapisBtn" class="nav-btn lapis-btn" aria-label="Lápis">
+          <span class="nav-icon">✏️</span>
+          <span class="nav-text">Lápis</span>
+        </button>
+      </nav>
+    </header>
+
+    <!-- Área Central - Mapa Maximizado -->
+    <main class="app-main">
+      <div id="mapContainer" class="map-container"></div>
+        
+        <!-- Controles de Zoom -->
+        <div class="zoom-controls">
+          <button id="zoomIn" class="zoom-btn zoom-in" title="Aumentar Zoom (Ctrl + +)">
+            <span class="zoom-icon">+</span>
+          </button>
+          <button id="zoomOut" class="zoom-btn zoom-out" title="Diminuir Zoom (Ctrl + -)">
+            <span class="zoom-icon">−</span>
+          </button>
+          <button id="zoomFit" class="zoom-btn zoom-fit" title="Ajustar ao Tamanho (Ctrl + 0)">
+            <span class="zoom-icon">⌂</span>
+          </button>
+          <div class="zoom-level">
+            <span id="zoomPercent">100%</span>
+          </div>
+        <button id="resetZoomPosition" class="zoom-btn zoom-reset" title="Resetar Posição dos Controles">📍</button>
+        </div>
+    </main>
+
+    <!-- Status Bar -->
+    <footer class="app-status">
+      <div class="status-info">
+        <span id="statusText">Pronto para gerar mapas mentais</span>
+      </div>
+      <div class="status-actions">
+        <button id="saveMapBtn" class="status-btn" aria-label="Salvar mapa">💾</button>
+        <button id="deleteMapBtn" class="status-btn" aria-label="Apagar mapa">🗑️</button>
+      </div>
+    </footer>
+  </div>
+
+  <!-- Popups Responsivos e Deslocáveis -->
+  
+  <!-- Chat Principal - Para gerar mapas e conversas gerais -->
+  <div id="floatingChat" class="floating-chat" style="display: none;">
+    <div class="floating-chat-header">
+      <div class="floating-chat-drag-area"></div>
+      <div class="floating-chat-title">
+        <span class="chat-icon">💬</span>
+        <span class="chat-title">Chat com IA</span>
+        <span class="chat-status">●</span>
+      </div>
+      <div class="floating-chat-controls">
+        <button class="control-btn minimize-btn" title="Minimizar">−</button>
+        <button class="control-btn close-btn" title="Fechar">✕</button>
+      </div>
+    </div>
+    <div class="floating-chat-body">
+      <div id="floatingChatLog" class="floating-chat-log" aria-live="polite"></div>
+      <div class="floating-chat-input-section">
+        <div class="floating-chat-input">
+          <textarea id="floatingChatInput" rows="3" placeholder="Digite um assunto para gerar mapa ou faça perguntas sobre o mapa atual..."></textarea>
+        </div>
+        <div class="floating-chat-actions">
+          <div class="action-buttons">
+            <button id="floatingChatSend" class="btn primary" title="Enviar mensagem">➤</button>
+            <button id="floatingChatClear" class="btn secondary" title="Limpar chat">🧹</button>
+          </div>
+          <div class="realtime-actions">
+            <button id="addNodeBtn" class="btn secondary" title="Adicionar nó ao mapa">➕</button>
+            <button id="expandNodeBtn" class="btn secondary" title="Expandir nó selecionado">🔍</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="resize-handle"></div>
+  </div>
+
+  <!-- Chat Especialista - Só aparece quando há mapa, conhece TUDO sobre o mapa específico -->
+  <div id="specialistChat" class="floating-chat specialist-chat" style="display: none;">
+    <div class="floating-chat-header">
+      <div class="floating-chat-drag-area"></div>
+      <div class="floating-chat-title">
+        <span class="chat-icon">🧠</span>
+        <span class="chat-title">Especialista do Mapa</span>
+        <span class="chat-status specialist-status">●</span>
+      </div>
+      <div class="floating-chat-controls">
+        <button class="control-btn minimize-btn" title="Minimizar">−</button>
+        <button class="control-btn close-btn" title="Fechar">✕</button>
+      </div>
+    </div>
+    <div class="floating-chat-body">
+      <div id="specialistChatLog" class="floating-chat-log" aria-live="polite"></div>
+      <div class="floating-chat-input-section">
+        <div class="floating-chat-input">
+          <textarea id="specialistChatInput" rows="3" placeholder="Pergunte sobre nós, conexões, organização, conceitos específicos do mapa..."></textarea>
+        </div>
+        <div class="floating-chat-actions">
+          <div class="action-buttons">
+            <button id="specialistChatSend" class="btn primary" title="Enviar pergunta">➤</button>
+            <button id="specialistChatClear" class="btn secondary" title="Limpar chat">🧹</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="resize-handle"></div>
+  </div>
+
+  <!-- Mapas Salvos Popup -->
+  <div id="savedMapsPopup" class="mobile-popup" data-popup="savedMaps">
+    <div class="popup-header" data-draggable="true">
+      <h3>🗺️ Mapas Salvos</h3>
+      <button class="popup-close" aria-label="Fechar">✕</button>
+    </div>
+    <div class="popup-content">
+      <div class="card">
+        <input id="saveTitleInput" type="text" placeholder="Título do mapa" />
+        <div class="card-actions">
+          <button id="saveMapBtnPopup" class="btn">💾 Salvar Mapa</button>
+        </div>
+      </div>
+      <div class="card">
+        <label class="label">Mapas Salvos</label>
+        <ul id="savedMapsList" class="list"></ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Configurações Popup -->
+  <div id="settingsPopup" class="mobile-popup" data-popup="settings">
+    <div class="popup-header" data-draggable="true">
+      <h3>⚙️ Configurações</h3>
+      <button class="popup-close" aria-label="Fechar">✕</button>
+    </div>
+    <div class="popup-content">
+      <div class="settings-tabs">
+        <button class="tab-btn active" data-tab="ai">IA</button>
+        <button class="tab-btn" data-tab="theme">Tema</button>
+        <button class="tab-btn" data-tab="layout">Layout</button>
+      </div>
+      
+      <div class="tab-content active" data-tab-content="ai">
+      <div class="card">
+        <label class="label">Provedor</label>
+        <select id="providerSelect">
+          <option value="groq">Groq</option>
+          <option value="openrouter">OpenRouter</option>
+        </select>
+      </div>
+      <div class="card">
+        <label class="label">API Key</label>
+        <input id="apiKeyInput" type="password" placeholder="Insira sua API Key" />
+        <button id="saveApiBtn" class="btn">Salvar API</button>
+        <p id="apiStatus" class="hint"></p>
+      </div>
+      <div class="card">
+        <label class="label">Modelo</label>
+        <select id="modelSelect">
+          <option value="">Selecione o provedor...</option>
+        </select>
+        <button id="refreshModelsBtn" class="btn ghost">Atualizar Modelos</button>
+        <p id="modelsStatus" class="hint"></p>
+        </div>
+      </div>
+
+      <div class="tab-content" data-tab-content="theme">
+      <div class="card">
+        <label class="label">Tema / Aparência</label>
+        <div class="theme-grid">
+          <div><label>Fundo</label><input type="color" id="colorBg" value="#ffffff"></div>
+          <div><label>Texto</label><input type="color" id="colorText" value="#111111"></div>
+          <div><label>Destaque</label><input type="color" id="colorAccent" value="#000000"></div>
+          <div><label>Muted</label><input type="color" id="colorMuted" value="#666666"></div>
+          <div><label>Borda</label><input type="color" id="colorBorder" value="#e6e6e6"></div>
+          <div><label>Tamanho (base)</label><input id="fontSizeSelect" type="number" min="1" max="99" value="16" /></div>
+          <div><label>Fonte</label><select id="fontFamilySelect">
+            <option value="Cal Sans, system-ui, -apple-system, 'Noto Sans', sans-serif">Cal Sans</option>
+            <option value="Noto Sans, system-ui, -apple-system, Segoe UI, Roboto, sans-serif" selected>Noto Sans</option>
+            <option value="'Space Mono', monospace">Space Mono</option>
+            <option value="'Segoe UI', system-ui, -apple-system, 'Noto Sans', sans-serif">Segoe UI</option>
+            <option value="Arial, system-ui, sans-serif">Arial</option>
+            <option value="'Inter', system-ui, -apple-system, 'Noto Sans', sans-serif">Inter</option>
+            <option value="'IBM Plex Sans', system-ui, -apple-system, 'Noto Sans', sans-serif">IBM Plex Sans</option>
+            <option value="'Poppins', system-ui, -apple-system, 'Noto Sans', sans-serif">Poppins</option>
+            <option value="'Roboto', system-ui, -apple-system, 'Noto Sans', sans-serif">Roboto</option>
+            <option value="'Lato', system-ui, -apple-system, 'Noto Sans', sans-serif">Lato</option>
+            <option value="'Montserrat', system-ui, -apple-system, 'Noto Sans', sans-serif">Montserrat</option>
+            <option value="'Merriweather', serif">Merriweather (serif)</option>
+            <option value="'Source Sans 3', system-ui, -apple-system, 'Noto Sans', sans-serif">Source Sans 3</option>
+            <option value="'Fira Sans', system-ui, -apple-system, 'Noto Sans', sans-serif">Fira Sans</option>
+          </select></div>
+        </div>
+          <div class="card-actions">
+          <button id="applyThemeBtn" class="btn">Aplicar</button>
+          <button id="resetThemeBtn" class="btn ghost">Restaurar</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="tab-content" data-tab-content="layout">
+      <div class="card">
+          <label class="label">Modos de Leitura</label>
+        <select id="readingModeSelect">
+          <option value="normal" selected>Normal</option>
+          <option value="aluno">Aluno Curioso</option>
+          <option value="detetive">Detetive</option>
+          <option value="jornalista">Jornalista</option>
+          <option value="criativo">Criativo</option>
+          <option value="minimalista">Minimalista</option>
+          <option value="analitico">Analítico</option>
+          <option value="contextualizador">Contextualizador</option>
+        </select>
+      </div>
+      <div class="card">
+        <label class="label">Layout / Template</label>
+        <select id="layoutTemplateSelect">
+          <option value="clean" selected>Clean</option>
+          <option value="compact">Compact</option>
+          <option value="spacious">Spacious</option>
+        </select>
+      </div>
+    </div>
+  </div>
+  </div>
+
+  <!-- Exportar Popup -->
+  <div id="exportPopup" class="mobile-popup" data-popup="export">
+    <div class="popup-header" data-draggable="true">
+      <h3>📤 Exportar Mapa</h3>
+      <button class="popup-close" aria-label="Fechar">✕</button>
+    </div>
+    <div class="popup-content">
+      <div class="card">
+        <label class="label">Formato de Exportação</label>
+        <select id="exportFormat" class="export-select">
+          <option value="png">PNG</option>
+          <option value="jpg">JPG</option>
+          <option value="pdf">PDF</option>
+          <option value="html">HTML</option>
+          <option value="json">JSON</option>
+          <option value="xml">XML</option>
+          <option value="mmd">Mermaid.js (graph TD)</option>
+        </select>
+        <div class="card-actions">
+          <button id="exportBtnPopup" class="btn primary">📤 Exportar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Popup Fixo - Aparece apenas quando há mapa -->
+  <div id="mapInfoPopup" class="fixed-popup" style="display: none;">
+    <div class="popup-header">
+      <h3>ℹ️ Informações do Mapa</h3>
+      <button class="popup-close" aria-label="Fechar">✕</button>
+    </div>
+    <div class="popup-content">
+      <div class="map-stats">
+        <div class="stat-item">
+          <span class="stat-label">Nós:</span>
+          <span id="nodeCount" class="stat-value">0</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Conexões:</span>
+          <span id="edgeCount" class="stat-value">0</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Layout:</span>
+          <span id="currentLayout" class="stat-value">-</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- Módulos convertidos -->
+  <script src="./storage.js"></script>
+  <script src="./ai.js"></script>
+  <script src="./layout-algorithm.js"></script>
+  <script src="./map.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>

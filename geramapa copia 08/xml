@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<map>
+  <title>Mapa Mental</title>
+  <nodes>
+    <node id="root">
+      <label>Mapa Mental</label>
+      <children><child id="a"/><child id="b"/></children>
+    </node>
+    <node id="a">
+      <label>A</label>
+      <children><child id="a1"/></children>
+    </node>
+    <node id="a1">
+      <label>A1</label>
+      <children></children>
+    </node>
+    <node id="b">
+      <label>B</label>
+      <children></children>
+    </node>
+  </nodes>
+  <connections>
+    <connection>
+      <source>root</source>
+      <target>a</target>
+    </connection>
+    <connection>
+      <source>a</source>
+      <target>a1</target>
+    </connection>
+    <connection>
+      <source>root</source>
+      <target>b</target>
+    </connection>
+  </connections>
+</map>
+

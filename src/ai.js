@@ -51,6 +51,8 @@ window.AI.chatMindMap = async function({ provider, apiKey, model, message }) {
         content:
           'Você é um gerador de mapas mentais. Responda SOMENTE em JSON válido com o formato: ' +
           '{"title":"<título>","nodes":[{"id":"root","label":"<assunto>","children":[{"id":"n1","label":"<tópico>","children":[...]}, ...]}]}} ' +
+          'IMPORTANTE: Adicione numeração sequencial aos labels para indicar ordem de leitura. ' +
+          'Use formato "1 - Tópico", "2 - Tópico", etc. para nós principais e "1.1 - Subtópico", "1.2 - Subtópico", etc. para sub-tópicos. ' +
           'Evite texto fora do JSON. Crie estrutura clara com 3-6 tópicos principais e sub-tópicos concisos.'
       },
       { role: 'user', content: message }
@@ -124,5 +126,91 @@ function normalizeMap(obj) {
   if (!root) {
     root = { id: 'root', label: title, children: [] };
   }
+  
+  // Adicionar numeração sequencial aos nós
+  addSequentialNumbering(root);
+  
   return { title, nodes: [root] };
 }
+
+/* Adiciona numeração sequencial aos labels dos nós */
+function addSequentialNumbering(node, prefix = '', counter = { value: 1 }) {
+  if (!node) return;
+
+  // Se é o nó root, não adiciona numeração
+  if (node.id === 'root') {
+    // Processa apenas os filhos do root
+    if (node.children && Array.isArray(node.children)) {
+      let childCounter = { value: 1 }; // Contador começa em 1 para filhos do root
+      node.children.forEach(child => {
+        addSequentialNumbering(child, '', childCounter); // Prefix vazio para filhos do root
+      });
+    }
+    return;
+  }
+
+  let cleanLabel = node.label;
+  // Remove qualquer numeração existente do label (ponto ou hífen)
+  const parts = node.label.match(/^(\d+(\.\d+)*)\s*[-\.]\s*(.*)/);
+  if (parts && parts[3]) {
+    cleanLabel = parts[3].trim(); // Extrai o texto sem numeração
+  } else if (parts && parts[1] && !parts[3]) {
+    cleanLabel = ''; // Se for apenas número, label limpo é vazio
+  }
+
+  // Aplica numeração sequencial com hífen para organização
+  const currentNumber = prefix ? `${prefix}.${counter.value}` : `${counter.value}`;
+  node.label = `${currentNumber} - ${cleanLabel}`;
+
+  // Usa esta numeração como prefixo para os filhos
+  const childPrefix = currentNumber;
+  counter.value++; // Incrementa para próximo irmão
+
+  // Processa filhos
+  if (node.children && Array.isArray(node.children)) {
+    let childCounter = { value: 1 }; // Cada nível inicia seu próprio contador
+    node.children.forEach(child => {
+      addSequentialNumbering(child, childPrefix, childCounter);
+    });
+  }
+}
+
+/* Verifica se o label já tem numeração */
+function hasNumbering(label) {
+  if (!label) return false;
+  // Verifica se começa com número seguido de ponto ou hífen
+  return /^\d+(\.\d+)*\s*[-\.]\s/.test(label.trim());
+}
+
+/* Extrai a numeração de um label para usar como prefixo */
+function extractNumberingPrefix(label) {
+  if (!label) return '';
+  const match = label.match(/^(\d+(?:\.\d+)*)\s*[-\.]\s/);
+  return match ? match[1] : '';
+}
+
+/* Calcula o próximo número sequencial para um nó filho */
+function getNextChildNumber(parentNode) {
+  if (!parentNode || !parentNode.children) return 1;
+  
+  const parentPrefix = extractNumberingPrefix(parentNode.label);
+  let maxChildNumber = 0;
+  
+  // Encontra o maior número entre os filhos existentes
+  parentNode.children.forEach(child => {
+    const childPrefix = extractNumberingPrefix(child.label);
+    if (childPrefix.startsWith(parentPrefix + '.')) {
+      const childNumber = childPrefix.split('.').pop();
+      const num = parseInt(childNumber);
+      if (!isNaN(num) && num > maxChildNumber) {
+        maxChildNumber = num;
+      }
+    }
+  });
+  
+  return maxChildNumber + 1;
+}
+
+// Expor funções auxiliares no objeto window.AI para acesso global
+window.AI.extractNumberingPrefix = extractNumberingPrefix;
+window.AI.getNextChildNumber = getNextChildNumber;

@@ -3212,7 +3212,26 @@ async function showTooltipForNode(node, anchorEl, mapJson) {
         if (obj.id === node.id() || obj.label === node.data('label')) {
           obj.children = obj.children || [];
           const nid = crypto.randomUUID();
-          obj.children.push({ id: nid, label: label, children: [] });
+          
+          // Aplicar numeração automática baseada no nó pai
+          let numberedLabel = label;
+          if (obj.id !== 'root') {
+            // Se não é o root, calcular numeração baseada no pai
+            const parentPrefix = window.AI.extractNumberingPrefix ? window.AI.extractNumberingPrefix(obj.label) : '';
+            const nextNumber = window.AI.getNextChildNumber ? window.AI.getNextChildNumber(obj) : 1;
+            
+            if (parentPrefix) {
+              numberedLabel = `${parentPrefix}.${nextNumber} - ${label}`;
+            } else {
+              numberedLabel = `${nextNumber} - ${label}`;
+            }
+          } else {
+            // Se é filho do root, usar numeração simples
+            const nextNumber = window.AI.getNextChildNumber ? window.AI.getNextChildNumber(obj) : 1;
+            numberedLabel = `${nextNumber} - ${label}`;
+          }
+          
+          obj.children.push({ id: nid, label: numberedLabel, children: [] });
           return true;
         }
         const kids = obj.children || [];

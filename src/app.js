@@ -2295,13 +2295,13 @@ document.addEventListener('click', (e) => {
 async function handleExport() {
   try {
     // ✅ Verificações básicas
-    if (!state.currentMap || !state.cy) {
+  if (!state.currentMap || !state.cy) {
       updateStatus('❌ Nenhum mapa carregado para exportar');
       alert('❌ Nenhum mapa carregado para exportar');
-      return;
-    }
-    
-    const format = document.getElementById('exportFormat')?.value || 'png';
+    return;
+  }
+  
+  const format = document.getElementById('exportFormat')?.value || 'png';
     console.log(`🔄 Iniciando exportação: ${format}`);
     updateStatus(`🔄 Exportando como ${format.toUpperCase()}...`);
     
@@ -3683,76 +3683,76 @@ async function exportMap(format) {
     console.log(`🔄 Iniciando exportação: ${format}`);
     
     // ✅ Formatos de texto (não precisam de imagem)
-    if (format === 'json') {
-      const payload = mapToStructuredJSON(state.currentMap);
-      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-      downloadBlob(blob, (state.currentMap.title || 'mapa_exportado') + '.json');
-      return;
-    }
+  if (format === 'json') {
+    const payload = mapToStructuredJSON(state.currentMap);
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    downloadBlob(blob, (state.currentMap.title || 'mapa_exportado') + '.json');
+    return;
+  }
     
-    if (format === 'xml') {
-      const xml = mapToXML(state.currentMap);
-      const blob = new Blob([xml], { type: 'application/xml' });
-      downloadBlob(blob, (state.currentMap.title || 'mapa_exportado') + '.xml');
-      return;
-    }
+  if (format === 'xml') {
+    const xml = mapToXML(state.currentMap);
+    const blob = new Blob([xml], { type: 'application/xml' });
+    downloadBlob(blob, (state.currentMap.title || 'mapa_exportado') + '.xml');
+    return;
+  }
     
-    if (format === 'mmd') {
-      const mmd = mapToMermaid(state.currentMap);
-      const blob = new Blob([mmd], { type: 'text/plain' });
-      downloadBlob(blob, (state.currentMap.title || 'mapa_exportado') + '.mmd');
-      return;
-    }
+  if (format === 'mmd') {
+    const mmd = mapToMermaid(state.currentMap);
+    const blob = new Blob([mmd], { type: 'text/plain' });
+    downloadBlob(blob, (state.currentMap.title || 'mapa_exportado') + '.mmd');
+    return;
+  }
     
     // ✅ Formatos de imagem (precisam de PNG do Cytoscape)
     console.log('🖼️ Gerando imagem PNG...');
-    const pngData = state.cy.png({ full: true, scale: 2, output: 'blob' });
+  const pngData = state.cy.png({ full: true, scale: 2, output: 'blob' });
     
     if (!pngData) {
       throw new Error('Falha na geração da imagem PNG');
     }
     
     // ✅ Garantir que temos um Blob
-    const blob = pngData instanceof Blob ? pngData : dataURLtoBlob(state.cy.png({ full: true, scale: 2 }));
+  const blob = pngData instanceof Blob ? pngData : dataURLtoBlob(state.cy.png({ full: true, scale: 2 }));
     
     if (!blob) {
       throw new Error('Falha na criação do Blob da imagem');
     }
     
     // ✅ PNG
-    if (format === 'png') {
-      downloadBlob(blob, (state.currentMap.title || 'mapa') + '.png');
-      return;
-    }
+  if (format === 'png') {
+    downloadBlob(blob, (state.currentMap.title || 'mapa') + '.png');
+    return;
+  }
     
     // ✅ JPG
-    if (format === 'jpg') {
+  if (format === 'jpg') {
       console.log('🔄 Convertendo PNG→JPG...');
-      const jpegBlob = await convertBlobToJpeg(blob, 0.92);
-      downloadBlob(jpegBlob, (state.currentMap.title || 'mapa') + '.jpg');
-      return;
-    }
+    const jpegBlob = await convertBlobToJpeg(blob, 0.92);
+    downloadBlob(jpegBlob, (state.currentMap.title || 'mapa') + '.jpg');
+    return;
+  }
     
     // ✅ HTML
-    if (format === 'html') {
+  if (format === 'html') {
       console.log('🔄 Criando HTML...');
-      const dataUrl = await blobToDataURL(blob);
-      const html = `<!doctype html><meta charset="utf-8"><title>${escapeHtml(state.currentMap.title||'Mapa')}</title><style>body{margin:0;padding:16px;font-family:Inter,system-ui,Arial;background:#fff}img{max-width:100%;height:auto;border:1px solid #ddd;border-radius:8px}</style><h1>${escapeHtml(state.currentMap.title||'Mapa')}</h1><img src="${dataUrl}" alt="Mapa Mental"/></html>`;
-      const hBlob = new Blob([html], { type: 'text/html' });
-      downloadBlob(hBlob, (state.currentMap.title || 'mapa') + '.html');
-      return;
-    }
+    const dataUrl = await blobToDataURL(blob);
+    const html = `<!doctype html><meta charset="utf-8"><title>${escapeHtml(state.currentMap.title||'Mapa')}</title><style>body{margin:0;padding:16px;font-family:Inter,system-ui,Arial;background:#fff}img{max-width:100%;height:auto;border:1px solid #ddd;border-radius:8px}</style><h1>${escapeHtml(state.currentMap.title||'Mapa')}</h1><img src="${dataUrl}" alt="Mapa Mental"/></html>`;
+    const hBlob = new Blob([html], { type: 'text/html' });
+    downloadBlob(hBlob, (state.currentMap.title || 'mapa') + '.html');
+    return;
+  }
     
     // ✅ PDF
-    if (format === 'pdf') {
+  if (format === 'pdf') {
       console.log('🔄 Criando PDF...');
       if (!window.jspdf || !window.jspdf.jsPDF) {
         throw new Error('jsPDF não carregado. Recarregue a página.');
       }
       
-      const { jsPDF } = window.jspdf;
-      const dataUrl = await blobToDataURL(blob);
-      const img = await loadImage(dataUrl);
+    const { jsPDF } = window.jspdf;
+    const dataUrl = await blobToDataURL(blob);
+    const img = await loadImage(dataUrl);
       
       const pdf = new jsPDF({ 
         orientation: img.width > img.height ? 'landscape' : 'portrait', 
@@ -3760,11 +3760,11 @@ async function exportMap(format) {
         format: [img.width, img.height] 
       });
       
-      pdf.addImage(dataUrl, 'PNG', 0, 0, img.width, img.height);
-      const pdfBlob = pdf.output('blob');
-      downloadBlob(pdfBlob, (state.currentMap.title || 'mapa') + '.pdf');
-      return;
-    }
+    pdf.addImage(dataUrl, 'PNG', 0, 0, img.width, img.height);
+    const pdfBlob = pdf.output('blob');
+    downloadBlob(pdfBlob, (state.currentMap.title || 'mapa') + '.pdf');
+    return;
+  }
     
     throw new Error(`Formato desconhecido: ${format}`);
     
@@ -3800,7 +3800,7 @@ function dataURLtoBlob(dataurl) {
       u8arr[i] = bstr.charCodeAt(i);
     }
     
-    return new Blob([u8arr], { type: mime });
+  return new Blob([u8arr], { type: mime });
   } catch (error) {
     console.error('❌ Erro na conversão DataURL→Blob:', error);
     throw new Error(`Falha na conversão: ${error.message}`);
@@ -3814,10 +3814,10 @@ function blobToDataURL(blob) {
         return;
       }
       
-      const fr = new FileReader();
+    const fr = new FileReader();
       fr.onload = () => resolve(fr.result);
       fr.onerror = (error) => reject(new Error(`Erro na leitura do Blob: ${error.message}`));
-      fr.readAsDataURL(blob);
+    fr.readAsDataURL(blob);
     } catch (error) {
       reject(new Error(`Falha na conversão Blob→DataURL: ${error.message}`));
     }
@@ -3832,10 +3832,10 @@ function loadImage(dataUrl) {
         return;
       }
       
-      const img = new Image();
+    const img = new Image();
       img.onload = () => resolve(img);
       img.onerror = (error) => reject(new Error(`Erro ao carregar imagem: ${error.message}`));
-      img.src = dataUrl;
+    img.src = dataUrl;
     } catch (error) {
       reject(new Error(`Falha no carregamento da imagem: ${error.message}`));
     }
@@ -3849,8 +3849,8 @@ function forceDirectDownload(blob, filename) {
     }
     
     // ✅ Método 1: Usar URL.createObjectURL
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
     a.href = url;
     a.download = filename;
     a.style.display = 'none';
@@ -3896,24 +3896,33 @@ function forceDirectDownload(blob, filename) {
 }
 
 function downloadBlob(blob, filename) {
-  // ✅ Usar função mais robusta para download direto
-  return forceDirectDownload(blob, filename);
+  try {
+    if (!blob) {
+      throw new Error('Blob inválido para download');
+    }
+    
+    // ✅ Usar função robusta para exportação de mapas (mantém funcionalidade original)
+    return forceDirectDownload(blob, filename);
+  } catch (error) {
+    console.error('❌ Erro no download:', error);
+    throw error;
+  }
 }
 async function convertBlobToJpeg(blob, quality = 0.9) {
   try {
-    const dataUrl = await blobToDataURL(blob);
-    const img = await loadImage(dataUrl);
-    const canvas = document.createElement('canvas');
-    canvas.width = img.width;
-    canvas.height = img.height;
-    const ctx = canvas.getContext('2d');
+  const dataUrl = await blobToDataURL(blob);
+  const img = await loadImage(dataUrl);
+  const canvas = document.createElement('canvas');
+  canvas.width = img.width;
+  canvas.height = img.height;
+  const ctx = canvas.getContext('2d');
     
     // ✅ Fundo branco para JPG
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
     // ✅ Desenhar imagem
-    ctx.drawImage(img, 0, 0);
+  ctx.drawImage(img, 0, 0);
     
     // ✅ Converter para JPG usando Promise
     return new Promise((resolve, reject) => {
@@ -5583,61 +5592,198 @@ function testAllDownloads() {
 // ✅ EXPORTA FUNÇÃO PARA TESTE NO CONSOLE
 window.testDownloads = testAllDownloads;
 
-// ✅ FUNÇÃO DE DOWNLOAD DO CONTEÚDO DA ABA ATIVA
+// ✅ FUNÇÃO DE TESTE ESPECÍFICA PARA DOWNLOAD DAS ABAS
+function testTabDownload() {
+  console.log('🧪 TESTANDO DOWNLOAD DAS ABAS...');
+  
+  // 1. Verificar se há node slider
+  const nodeSlider = document.querySelector('.node-slider');
+  if (!nodeSlider) {
+    console.error('❌ Nenhum node slider encontrado');
+    alert('Abra um nó primeiro para testar o download das abas');
+    return;
+  }
+  
+  console.log('✅ Node slider encontrado');
+  
+  // 2. Verificar se há aba ativa
+  const activeTab = nodeSlider.querySelector('.tab-content.active');
+  if (!activeTab) {
+    console.error('❌ Nenhuma aba ativa encontrada');
+    alert('Clique em uma aba primeiro para testar o download');
+    return;
+  }
+  
+  console.log('✅ Aba ativa encontrada');
+  
+  // 3. Verificar se há conteúdo na aba
+  const content = activeTab.innerHTML;
+  if (!content || content.length < 10) {
+    console.error('❌ Aba não tem conteúdo suficiente');
+    alert('A aba não tem conteúdo suficiente para download');
+    return;
+  }
+  
+  console.log('✅ Conteúdo encontrado, tamanho:', content.length, 'caracteres');
+  
+  // 4. Obter nome da aba
+  const activeTabButton = nodeSlider.querySelector('.tab.active[data-tab]');
+  const tabName = activeTabButton ? activeTabButton.dataset.tab : 'conteudo';
+  console.log('✅ Nome da aba:', tabName);
+  
+  // 5. Obter nome do nó
+  const nodeLabel = nodeSlider.querySelector('.node-slider-title')?.textContent || 'Nó_Teste';
+  console.log('✅ Nome do nó:', nodeLabel);
+  
+  // 6. Testar download
+  try {
+    console.log('🔄 Testando download...');
+    downloadActiveTabContent(nodeSlider, nodeLabel);
+    console.log('✅ Teste de download iniciado');
+  } catch (error) {
+    console.error('❌ Erro no teste:', error);
+    alert('Erro no teste: ' + error.message);
+  }
+}
+
+// ✅ EXPORTA FUNÇÃO DE TESTE
+window.testTabDownload = testTabDownload;
+
+// ✅ FUNÇÃO DE TESTE PARA VERIFICAR EXPORTAÇÃO DE MAPAS
+function testMapExport() {
+  console.log('🧪 TESTANDO EXPORTAÇÃO DE MAPAS...');
+  
+  if (!state.currentMap || !state.cy) {
+    console.error('❌ Nenhum mapa carregado');
+    alert('Crie um mapa primeiro para testar a exportação');
+    return;
+  }
+  
+  console.log('✅ Mapa carregado, testando exportação JSON...');
+  
+  try {
+    const payload = mapToStructuredJSON(state.currentMap);
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    downloadBlob(blob, 'teste_exportacao_mapa.json');
+    console.log('✅ Exportação de mapa: SUCESSO');
+  } catch (error) {
+    console.error('❌ Erro na exportação de mapa:', error);
+    alert('❌ Erro na exportação: ' + error.message);
+  }
+}
+
+// ✅ EXPORTA FUNÇÃO DE TESTE DE EXPORTAÇÃO
+window.testMapExport = testMapExport;
+
+// ✅ FUNÇÃO DE TESTE SIMPLES
+function testSimpleDownload() {
+  console.log('🧪 TESTANDO DOWNLOAD SIMPLES...');
+  
+  try {
+    const testText = 'Este é um teste de download simples.\n\nData: ' + new Date().toLocaleString('pt-BR');
+    const success = simpleDownload(testText, 'teste_download_simples.txt');
+    
+    if (success) {
+      console.log('✅ Teste de download simples: SUCESSO');
+      alert('✅ Teste de download realizado com sucesso!');
+    } else {
+      console.log('❌ Teste de download simples: FALHOU');
+      alert('❌ Teste de download falhou');
+    }
+  } catch (error) {
+    console.error('❌ Erro no teste:', error);
+    alert('❌ Erro no teste: ' + error.message);
+  }
+}
+
+// ✅ EXPORTA FUNÇÃO DE TESTE SIMPLES
+window.testSimpleDownload = testSimpleDownload;
+
+// ✅ FUNÇÃO SIMPLES E FUNCIONAL PARA DOWNLOAD
+function simpleDownload(text, filename) {
+  try {
+    // Criar blob com o texto
+    const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+    
+    // Criar URL do blob
+    const url = window.URL.createObjectURL(blob);
+    
+    // Criar link temporário
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    
+    // Adicionar ao DOM, clicar e remover
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    // Limpar URL
+    window.URL.revokeObjectURL(url);
+    
+    console.log('✅ Download realizado:', filename);
+    return true;
+  } catch (error) {
+    console.error('❌ Erro no download simples:', error);
+    return false;
+  }
+}
+
+// ✅ FUNÇÃO DE DOWNLOAD DO CONTEÚDO DA ABA ATIVA (RECONSTRUÍDA)
 function downloadActiveTabContent(nodeSlider, nodeLabel) {
   try {
-    // Encontrar a aba ativa
+    console.log('🔄 Iniciando download...');
+    
+    // 1. Verificar se há aba ativa
     const activeTab = nodeSlider.querySelector('.tab-content.active');
     if (!activeTab) {
-      console.warn('Nenhuma aba ativa encontrada');
+      alert('❌ Nenhuma aba ativa encontrada. Clique em uma aba primeiro.');
       return;
     }
     
-    // Obter o nome da aba ativa
+    // 2. Obter nome da aba
     const activeTabButton = nodeSlider.querySelector('.tab.active[data-tab]');
     const tabName = activeTabButton ? activeTabButton.dataset.tab : 'conteudo';
     
-    // Extrair texto do conteúdo HTML
-    let content = activeTab.innerHTML;
+    // 3. Extrair conteúdo da aba
+    let content = activeTab.textContent || activeTab.innerText || '';
     
-    // Converter HTML para texto limpo
-    const tempDiv = document.createElement('div');
-    tempDiv.innerHTML = content;
-    
-    // Remover elementos de interface (botões, inputs, etc.)
-    tempDiv.querySelectorAll('button, input, select, .btn, .card-actions').forEach(el => el.remove());
-    
-    // Obter texto limpo
-    let cleanText = tempDiv.textContent || tempDiv.innerText || '';
-    
-    // Limpar espaços extras
-    cleanText = cleanText.replace(/\s+/g, ' ').trim();
-    
-    // Se não há conteúdo, usar HTML como fallback
-    if (!cleanText || cleanText.length < 10) {
-      cleanText = content.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+    // Se não há texto, tentar extrair do HTML
+    if (!content || content.trim().length < 5) {
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = activeTab.innerHTML;
+      tempDiv.querySelectorAll('button, input, select, .btn').forEach(el => el.remove());
+      content = tempDiv.textContent || tempDiv.innerText || '';
     }
     
-    // Criar cabeçalho do arquivo
+    // Se ainda não há conteúdo, usar HTML limpo
+    if (!content || content.trim().length < 5) {
+      content = activeTab.innerHTML.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+    }
+    
+    // 4. Criar conteúdo do arquivo
     const header = `=== CONTEÚDO DA ABA: ${tabName.toUpperCase()} ===\n`;
-    const nodeHeader = `Nó: ${nodeLabel}\n`;
-    const dateHeader = `Data: ${new Date().toLocaleString('pt-BR')}\n`;
+    const nodeInfo = `Nó: ${nodeLabel}\n`;
+    const dateInfo = `Data: ${new Date().toLocaleString('pt-BR')}\n`;
     const separator = '='.repeat(50) + '\n\n';
     
-    const fullContent = header + nodeHeader + dateHeader + separator + cleanText;
+    const fullContent = header + nodeInfo + dateInfo + separator + content;
     
-    // Criar e baixar arquivo usando função robusta
-    const blob = new Blob([fullContent], { type: 'text/plain;charset=utf-8' });
+    // 5. Criar nome do arquivo
     const filename = `${nodeLabel.replace(/[^a-zA-Z0-9]/g, '_')}_${tabName}.txt`;
     
-    // ✅ Usar função robusta para download direto
-    forceDirectDownload(blob, filename);
+    // 6. Fazer download usando função simples (APENAS PARA ABAS)
+    const success = simpleDownload(fullContent, filename);
     
-    console.log(`✅ Download realizado: ${tabName} - ${nodeLabel}`);
+    if (success) {
+      console.log('✅ Download das abas concluído com sucesso!');
+    } else {
+      alert('❌ Erro ao fazer download das abas. Tente novamente.');
+    }
     
   } catch (error) {
-    console.error('❌ Erro ao fazer download:', error);
-    alert('Erro ao fazer download do conteúdo. Tente novamente.');
+    console.error('❌ Erro na função de download:', error);
+    alert('❌ Erro ao fazer download: ' + error.message);
   }
 }
 

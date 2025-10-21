@@ -118,6 +118,9 @@
     width: 100%;
     height: 100%;
     position: relative;
+    /* ✅ Melhorar interação touch no mapa */
+    touch-action: pan-x pan-y pinch-zoom;
+    -webkit-touch-callout: none;
   }
   
   /* Status Bar */
@@ -174,7 +177,9 @@
     max-width: 90vw;
     max-height: 80vh;
     overflow: hidden;
-    touch-action: none;
+    /* ✅ Melhorar touch targets */
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
   }
   
   .mobile-popup.show {
@@ -214,6 +219,11 @@
     padding: 4px;
     border-radius: 4px;
     transition: background 0.2s ease;
+    /* ✅ Melhorar área de toque */
+    min-width: 44px;
+    min-height: 44px;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
   }
   
   .popup-close:hover {
@@ -497,14 +507,23 @@
       left: 5vw;
       min-width: 280px;
       min-height: 300px;
+      /* ✅ Melhorar touch targets */
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
     }
     
     .floating-chat-log {
       max-height: 40vh;
+      /* ✅ Melhorar scroll em móveis */
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
     }
     
     .floating-chat-input textarea {
       min-height: 60px;
+      /* ✅ Melhorar área de toque */
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
     }
     
     .realtime-actions {
@@ -1349,6 +1368,15 @@
     .model-info {
       text-align: center;
     }
+    
+    /* ✅ Melhorias específicas para o mapa em dispositivos pequenos */
+    .map-container {
+      /* ✅ Permitir zoom com pinch */
+      touch-action: pan-x pan-y pinch-zoom;
+      /* ✅ Melhorar performance */
+      will-change: transform;
+      transform: translateZ(0);
+    }
   }
   
   /* ========================================
@@ -2109,7 +2137,50 @@
   .app.layout-spacious .sidebar { padding:24px; width:380px; }
   
   * { box-sizing: border-box; }
-  html, body { height: 100%; }
+  html, body { 
+    height: 100%; 
+    /* ✅ Prevenir zoom indesejado em dispositivos móveis */
+    touch-action: manipulation;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+  }
+  
+  /* ✅ Permitir seleção de texto em áreas específicas */
+  input, textarea, .node-slider-content, .popup-content {
+    -webkit-user-select: text;
+    -moz-user-select: text;
+    -ms-user-select: text;
+    user-select: text;
+  }
+  
+  /* ✅ Melhorar scroll em dispositivos móveis */
+  * {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+  
+  /* ✅ Prevenir scroll bounce em iOS */
+  body {
+    overscroll-behavior-y: none;
+  }
+  
+  /* ✅ Melhorar drag and drop em dispositivos móveis */
+  .draggable, .resizable {
+    touch-action: none;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  
+  /* ✅ Melhorar performance de elementos arrastáveis */
+  .dragging, .resizing {
+    will-change: transform;
+    transform: translateZ(0);
+  }
   body {
     margin: 0;
     font-family: var(--font-family-main);
@@ -3116,12 +3187,20 @@
       right: 15px;
       padding: 10px;
       gap: 6px;
+      /* ✅ Melhorar touch targets */
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
     }
     
     .zoom-btn {
       width: 40px;
       height: 40px;
       font-size: 16px;
+      /* ✅ Melhorar área de toque */
+      min-width: 44px;
+      min-height: 44px;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
     }
     
     .zoom-icon {

@@ -1329,13 +1329,7 @@ if (floatingChatInput) {
   });
 }
 
-// Integração com botão de chat do header
-const chatBtn = document.getElementById('chatBtn');
-if (chatBtn) {
-  chatBtn.addEventListener('click', () => {
-    toggleFloatingChat();
-  });
-}
+// ✅ REMOVIDO - Duplicação corrigida na linha 1970
 
 /* ========================================
    CHAT ESPECIALISTA - FUNCIONALIDADES
@@ -1968,7 +1962,7 @@ function guardProvider() {
 // Eventos do novo layout - Popups
 if (chatBtn) {
   chatBtn.addEventListener('click', () => {
-    togglePopup(chatPopup);
+    toggleFloatingChat(); // ✅ Usar função correta
     setActiveNavBtn(chatBtn);
   });
 }

@@ -306,11 +306,12 @@ window.LayoutAlgorithm.routeEdgesSmart = function(cy) {
 let autoOrganizationActive = false;
 let autoOrganizationInterval = null;
 let autoOrganizationConfig = {
-  minGap: 50,           // Distância mínima MUITO aumentada entre nós
-  damping: 0.6,         // Menos damping para movimento mais eficaz
-  stepMax: 20,          // Movimento máximo aumentado
-  forceStrength: 2.5,   // Força de repulsão MUITO aumentada
-  interval: 16,         // Intervalo menor para 60fps (mais responsivo)
+  enabled: false,       // ✅ DESABILITADO - Organização automática OFF
+  minGap: 50,           // Distância mínima entre nós
+  damping: 0.6,         // Damping para movimento
+  stepMax: 20,          // Movimento máximo
+  forceStrength: 2.5,   // Força de repulsão
+  interval: 16,         // Intervalo para 60fps
   enableHierarchy: true, // Respeitar hierarquia
   enableRootAnchor: true // Manter nó raiz ancorado
 };
@@ -318,6 +319,9 @@ let autoOrganizationConfig = {
 // Função principal de auto-organização
 function performAutoOrganization(cy) {
   if (!cy || cy.destroyed() || !autoOrganizationActive) return;
+  
+  // ✅ VERIFICAR SE ESTÁ HABILITADO
+  if (!autoOrganizationConfig.enabled) return;
   
   const nodes = cy.nodes();
   if (nodes.length < 2) return;
@@ -376,8 +380,8 @@ function performAutoOrganization(cy) {
     forceY *= config.damping;
     
     // Limitar movimento máximo
-    const moveX = Math.max(-config.stepMax, Math.min(config.stepMax, forceX));
-    const moveY = Math.max(-config.stepMax, Math.min(config.stepMax, forceY));
+    let moveX = Math.max(-config.stepMax, Math.min(config.stepMax, forceX));
+    let moveY = Math.max(-config.stepMax, Math.min(config.stepMax, forceY));
     
     // Respeitar hierarquia se habilitado
     if (config.enableHierarchy) {

@@ -43,8 +43,8 @@ window.MapEngine.initCy = function(container) {
           'height': '48px',
           'min-width': '36px',
           'min-height': '36px',
-          'max-width': '72px',
-          'max-height': '72px',
+          'text-max-width': '72px',
+          'text-max-height': '72px',
         }
       },
       { selector: 'node[depth = 0]',
@@ -56,8 +56,8 @@ window.MapEngine.initCy = function(container) {
           'height': '60px',
           'min-width': '48px',
           'min-height': '48px',
-          'max-width': '84px',
-          'max-height': '84px',
+          'text-max-width': '84px',
+          'text-max-height': '84px',
         }
       },
       { selector: 'node[img]',
@@ -254,7 +254,7 @@ window.MapEngine.renderMindMap = function(cy, mapJson, layoutModel = 'default', 
       const parent = incoming[0] || null;
       const px = parent ? parent.position().x : cx;
       const py = parent ? parent.position().y : cyc;
-      n.position({ x: px + (Math.random() * 80 - 40), y: py + (Math.random() * 80 - 40) });
+      n.position({ x: px + (Math.random() * 120 - 60), y: py + (Math.random() * 120 - 60) });
     });
     
     if (!preserveViewport) {
@@ -283,7 +283,7 @@ window.MapEngine.renderMindMap = function(cy, mapJson, layoutModel = 'default', 
     level1.forEach((n, i) => {
       const x = -cw/2 + margin + 220 + (i % 2 === 0 ? 0 : 0); // main branches start to the right of root
       const y = startY + i * bandHeight;
-      n.position({ x: x + Math.random() * 40 - 20, y: y + (Math.random()*20 -10) });
+      n.position({ x: x + Math.random() * 60 - 30, y: y + (Math.random() * 40 - 20) });
       // recursively position descendants to the right, drifting vertically within the branch band
       const placeChildren = (node, depth) => {
         const kids = node.outgoers('node');

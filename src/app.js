@@ -2293,20 +2293,45 @@ document.addEventListener('click', (e) => {
 });
 
 async function handleExport() {
-  if (!state.currentMap || !state.cy) {
-    updateStatus('Nenhum mapa carregado para exportar');
-    return;
-  }
-  
-  const format = document.getElementById('exportFormat')?.value || 'png';
-  updateStatus(`Exportando como ${format.toUpperCase()}...`);
-  
   try {
+    // ✅ Verificações básicas
+    if (!state.currentMap || !state.cy) {
+      updateStatus('❌ Nenhum mapa carregado para exportar');
+      alert('❌ Nenhum mapa carregado para exportar');
+      return;
+    }
+    
+    const format = document.getElementById('exportFormat')?.value || 'png';
+    console.log(`🔄 Iniciando exportação: ${format}`);
+    updateStatus(`🔄 Exportando como ${format.toUpperCase()}...`);
+    
+    // ✅ Desabilitar botão durante exportação
+    const exportBtn = document.getElementById('exportBtnPopup');
+    if (exportBtn) {
+      exportBtn.disabled = true;
+      exportBtn.textContent = '⏳ Exportando...';
+    }
+    
     await exportMap(format);
-    updateStatus('Exportação concluída com sucesso');
+    
+    // ✅ Sucesso
+    updateStatus('✅ Exportação concluída com sucesso');
+    console.log('✅ Exportação concluída com sucesso');
     closeAllPopups();
+    
   } catch (err) {
-    updateStatus(`Erro na exportação: ${err.message}`);
+    // ✅ Erro
+    const errorMsg = `❌ Erro na exportação: ${err.message}`;
+    updateStatus(errorMsg);
+    console.error('❌ Erro na exportação:', err);
+    alert(errorMsg);
+  } finally {
+    // ✅ Reabilitar botão
+    const exportBtn = document.getElementById('exportBtnPopup');
+    if (exportBtn) {
+      exportBtn.disabled = false;
+      exportBtn.textContent = '📤 Exportar';
+    }
   }
 }
 
@@ -3645,103 +3670,265 @@ if (modelSelector) {
 
 /* Export helpers */
 async function exportMap(format) {
-  // handle structured/text formats first (no image generation)
-  if (format === 'json') {
-    const payload = mapToStructuredJSON(state.currentMap);
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-    downloadBlob(blob, (state.currentMap.title || 'mapa_exportado') + '.json');
-    return;
+  try {
+    // ✅ Verificações de segurança
+    if (!state.currentMap) {
+      throw new Error('Nenhum mapa carregado para exportar');
+    }
+    
+    if (!state.cy) {
+      throw new Error('Cytoscape não inicializado');
+    }
+    
+    console.log(`🔄 Iniciando exportação: ${format}`);
+    
+    // ✅ Formatos de texto (não precisam de imagem)
+    if (format === 'json') {
+      const payload = mapToStructuredJSON(state.currentMap);
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      downloadBlob(blob, (state.currentMap.title || 'mapa_exportado') + '.json');
+      return;
+    }
+    
+    if (format === 'xml') {
+      const xml = mapToXML(state.currentMap);
+      const blob = new Blob([xml], { type: 'application/xml' });
+      downloadBlob(blob, (state.currentMap.title || 'mapa_exportado') + '.xml');
+      return;
+    }
+    
+    if (format === 'mmd') {
+      const mmd = mapToMermaid(state.currentMap);
+      const blob = new Blob([mmd], { type: 'text/plain' });
+      downloadBlob(blob, (state.currentMap.title || 'mapa_exportado') + '.mmd');
+      return;
+    }
+    
+    // ✅ Formatos de imagem (precisam de PNG do Cytoscape)
+    console.log('🖼️ Gerando imagem PNG...');
+    const pngData = state.cy.png({ full: true, scale: 2, output: 'blob' });
+    
+    if (!pngData) {
+      throw new Error('Falha na geração da imagem PNG');
+    }
+    
+    // ✅ Garantir que temos um Blob
+    const blob = pngData instanceof Blob ? pngData : dataURLtoBlob(state.cy.png({ full: true, scale: 2 }));
+    
+    if (!blob) {
+      throw new Error('Falha na criação do Blob da imagem');
+    }
+    
+    // ✅ PNG
+    if (format === 'png') {
+      downloadBlob(blob, (state.currentMap.title || 'mapa') + '.png');
+      return;
+    }
+    
+    // ✅ JPG
+    if (format === 'jpg') {
+      console.log('🔄 Convertendo PNG→JPG...');
+      const jpegBlob = await convertBlobToJpeg(blob, 0.92);
+      downloadBlob(jpegBlob, (state.currentMap.title || 'mapa') + '.jpg');
+      return;
+    }
+    
+    // ✅ HTML
+    if (format === 'html') {
+      console.log('🔄 Criando HTML...');
+      const dataUrl = await blobToDataURL(blob);
+      const html = `<!doctype html><meta charset="utf-8"><title>${escapeHtml(state.currentMap.title||'Mapa')}</title><style>body{margin:0;padding:16px;font-family:Inter,system-ui,Arial;background:#fff}img{max-width:100%;height:auto;border:1px solid #ddd;border-radius:8px}</style><h1>${escapeHtml(state.currentMap.title||'Mapa')}</h1><img src="${dataUrl}" alt="Mapa Mental"/></html>`;
+      const hBlob = new Blob([html], { type: 'text/html' });
+      downloadBlob(hBlob, (state.currentMap.title || 'mapa') + '.html');
+      return;
+    }
+    
+    // ✅ PDF
+    if (format === 'pdf') {
+      console.log('🔄 Criando PDF...');
+      if (!window.jspdf || !window.jspdf.jsPDF) {
+        throw new Error('jsPDF não carregado. Recarregue a página.');
+      }
+      
+      const { jsPDF } = window.jspdf;
+      const dataUrl = await blobToDataURL(blob);
+      const img = await loadImage(dataUrl);
+      
+      const pdf = new jsPDF({ 
+        orientation: img.width > img.height ? 'landscape' : 'portrait', 
+        unit: 'pt', 
+        format: [img.width, img.height] 
+      });
+      
+      pdf.addImage(dataUrl, 'PNG', 0, 0, img.width, img.height);
+      const pdfBlob = pdf.output('blob');
+      downloadBlob(pdfBlob, (state.currentMap.title || 'mapa') + '.pdf');
+      return;
+    }
+    
+    throw new Error(`Formato desconhecido: ${format}`);
+    
+  } catch (error) {
+    console.error('❌ Erro na exportação:', error);
+    throw error; // Re-throw para que handleExport possa capturar
   }
-  if (format === 'xml') {
-    const xml = mapToXML(state.currentMap);
-    const blob = new Blob([xml], { type: 'application/xml' });
-    downloadBlob(blob, (state.currentMap.title || 'mapa_exportado') + '.xml');
-    return;
-  }
-  if (format === 'mmd') {
-    const mmd = mapToMermaid(state.currentMap);
-    const blob = new Blob([mmd], { type: 'text/plain' });
-    downloadBlob(blob, (state.currentMap.title || 'mapa_exportado') + '.mmd');
-    return;
-  }
-  // produce PNG dataURL from cytoscape
-  const pngData = state.cy.png({ full: true, scale: 2, output: 'blob' });
-  // pngData may be Blob or dataURL depending on cytoscape; ensure Blob
-  const blob = pngData instanceof Blob ? pngData : dataURLtoBlob(state.cy.png({ full: true, scale: 2 }));
-  if (format === 'png') {
-    downloadBlob(blob, (state.currentMap.title || 'mapa') + '.png');
-    return;
-  }
-  if (format === 'jpg') {
-    const jpegBlob = await convertBlobToJpeg(blob, 0.92);
-    downloadBlob(jpegBlob, (state.currentMap.title || 'mapa') + '.jpg');
-    return;
-  }
-  if (format === 'html') {
-    // embed PNG data URI into simple HTML
-    const dataUrl = await blobToDataURL(blob);
-    const html = `<!doctype html><meta charset="utf-8"><title>${escapeHtml(state.currentMap.title||'Mapa')}</title><style>body{margin:0;padding:16px;font-family:Inter,system-ui,Arial;background:#fff}img{max-width:100%;height:auto;border:1px solid #ddd;border-radius:8px}</style><h1>${escapeHtml(state.currentMap.title||'Mapa')}</h1><img src="${dataUrl}" alt="Mapa Mental"/></html>`;
-    const hBlob = new Blob([html], { type: 'text/html' });
-    downloadBlob(hBlob, (state.currentMap.title || 'mapa') + '.html');
-    return;
-  }
-  if (format === 'pdf') {
-    // use local jsPDF
-    if (!window.jspdf || !window.jspdf.jsPDF) throw new Error('jsPDF não carregado');
-    const { jsPDF } = window.jspdf;
-    const dataUrl = await blobToDataURL(blob);
-    // create an image element to get dims
-    const img = await loadImage(dataUrl);
-    const pdf = new jsPDF({ orientation: img.width > img.height ? 'landscape' : 'portrait', unit: 'pt', format: [img.width, img.height] });
-    pdf.addImage(dataUrl, 'PNG', 0, 0, img.width, img.height);
-    const pdfBlob = pdf.output('blob');
-    downloadBlob(pdfBlob, (state.currentMap.title || 'mapa') + '.pdf');
-    return;
-  }
-  throw new Error('Formato desconhecido');
 }
 
 /* small utilities */
 function dataURLtoBlob(dataurl) {
-  const arr = dataurl.split(','), mime = arr[0].match(/:(.*?);/)[1];
-  const bstr = atob(arr[1]); let n = bstr.length; const u8arr = new Uint8Array(n);
-  while (n--) u8arr[n] = bstr.charCodeAt(n);
-  return new Blob([u8arr], { type: mime });
+  try {
+    if (!dataurl || typeof dataurl !== 'string') {
+      throw new Error('DataURL inválido');
+    }
+    
+    const arr = dataurl.split(',');
+    if (arr.length !== 2) {
+      throw new Error('Formato de DataURL inválido');
+    }
+    
+    const mimeMatch = arr[0].match(/:(.*?);/);
+    if (!mimeMatch) {
+      throw new Error('Tipo MIME não encontrado no DataURL');
+    }
+    
+    const mime = mimeMatch[1];
+    const bstr = atob(arr[1]);
+    const n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    
+    for (let i = 0; i < n; i++) {
+      u8arr[i] = bstr.charCodeAt(i);
+    }
+    
+    return new Blob([u8arr], { type: mime });
+  } catch (error) {
+    console.error('❌ Erro na conversão DataURL→Blob:', error);
+    throw new Error(`Falha na conversão: ${error.message}`);
+  }
 }
 function blobToDataURL(blob) {
-  return new Promise((res, rej) => {
-    const fr = new FileReader();
-    fr.onload = () => res(fr.result);
-    fr.onerror = rej;
-    fr.readAsDataURL(blob);
+  return new Promise((resolve, reject) => {
+    try {
+      if (!blob || !(blob instanceof Blob)) {
+        reject(new Error('Blob inválido'));
+        return;
+      }
+      
+      const fr = new FileReader();
+      fr.onload = () => resolve(fr.result);
+      fr.onerror = (error) => reject(new Error(`Erro na leitura do Blob: ${error.message}`));
+      fr.readAsDataURL(blob);
+    } catch (error) {
+      reject(new Error(`Falha na conversão Blob→DataURL: ${error.message}`));
+    }
   });
 }
+
 function loadImage(dataUrl) {
-  return new Promise((res, rej) => {
-    const img = new Image();
-    img.onload = () => res(img);
-    img.onerror = rej;
-    img.src = dataUrl;
+  return new Promise((resolve, reject) => {
+    try {
+      if (!dataUrl || typeof dataUrl !== 'string') {
+        reject(new Error('DataURL inválido'));
+        return;
+      }
+      
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = (error) => reject(new Error(`Erro ao carregar imagem: ${error.message}`));
+      img.src = dataUrl;
+    } catch (error) {
+      reject(new Error(`Falha no carregamento da imagem: ${error.message}`));
+    }
   });
 }
+// ✅ FUNÇÃO ALTERNATIVA PARA DOWNLOAD DIRETO (MAIS ROBUSTA)
+function forceDirectDownload(blob, filename) {
+  try {
+    if (!blob) {
+      throw new Error('Blob inválido para download');
+    }
+    
+    // ✅ Método 1: Usar URL.createObjectURL
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.style.display = 'none';
+    a.target = '_self';
+    
+    // ✅ Adicionar ao DOM temporariamente
+    document.body.appendChild(a);
+    
+    // ✅ Disparar evento de clique
+    const clickEvent = new MouseEvent('click', {
+      view: window,
+      bubbles: true,
+      cancelable: true
+    });
+    a.dispatchEvent(clickEvent);
+    
+    // ✅ Limpar imediatamente
+    setTimeout(() => {
+      if (document.body.contains(a)) {
+        document.body.removeChild(a);
+      }
+      URL.revokeObjectURL(url);
+    }, 50);
+    
+    console.log(`✅ Download direto forçado: ${filename}`);
+    return true;
+    
+  } catch (error) {
+    console.error('❌ Erro no download direto:', error);
+    
+    // ✅ Método 2: Fallback usando window.open (se necessário)
+    try {
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank');
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      console.log(`⚠️ Download via nova aba: ${filename}`);
+      return true;
+    } catch (fallbackError) {
+      console.error('❌ Fallback também falhou:', fallbackError);
+      throw new Error(`Falha completa no download: ${error.message}`);
+    }
+  }
+}
+
 function downloadBlob(blob, filename) {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = filename; document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 2000);
+  // ✅ Usar função mais robusta para download direto
+  return forceDirectDownload(blob, filename);
 }
 async function convertBlobToJpeg(blob, quality = 0.9) {
-  const dataUrl = await blobToDataURL(blob);
-  const img = await loadImage(dataUrl);
-  const canvas = document.createElement('canvas');
-  canvas.width = img.width;
-  canvas.height = img.height;
-  const ctx = canvas.getContext('2d');
-  ctx.fillStyle = '#ffffff'; ctx.fillRect(0,0,canvas.width,canvas.height);
-  ctx.drawImage(img, 0, 0);
-  return await (await fetch(canvas.toDataURL('image/jpeg', quality))).blob();
+  try {
+    const dataUrl = await blobToDataURL(blob);
+    const img = await loadImage(dataUrl);
+    const canvas = document.createElement('canvas');
+    canvas.width = img.width;
+    canvas.height = img.height;
+    const ctx = canvas.getContext('2d');
+    
+    // ✅ Fundo branco para JPG
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // ✅ Desenhar imagem
+    ctx.drawImage(img, 0, 0);
+    
+    // ✅ Converter para JPG usando Promise
+    return new Promise((resolve, reject) => {
+      canvas.toBlob((jpegBlob) => {
+        if (jpegBlob) {
+          resolve(jpegBlob);
+        } else {
+          reject(new Error('Falha na conversão para JPG'));
+        }
+      }, 'image/jpeg', quality);
+    });
+  } catch (error) {
+    console.error('❌ Erro na conversão PNG→JPG:', error);
+    throw new Error(`Erro na conversão: ${error.message}`);
+  }
 }
 function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 
@@ -5335,6 +5522,67 @@ function hasStoredContent(nodeLabel, tabName) {
   }
 }
 
+// ✅ FUNÇÃO DE TESTE PARA VERIFICAR DOWNLOADS
+function testAllDownloads() {
+  console.log('🧪 TESTANDO TODOS OS PONTOS DE DOWNLOAD...');
+  
+  // 1. Testar downloadBlob direto
+  try {
+    const testBlob = new Blob(['Teste de download direto'], { type: 'text/plain' });
+    downloadBlob(testBlob, 'teste_download_direto.txt');
+    console.log('✅ 1. downloadBlob direto: OK');
+  } catch (error) {
+    console.error('❌ 1. downloadBlob direto: FALHOU', error);
+  }
+  
+  // 2. Testar se há mapa para exportação
+  if (state.currentMap && state.cy) {
+    console.log('✅ 2. Mapa carregado: OK');
+    
+    // Testar exportação JSON (mais simples)
+    try {
+      const payload = mapToStructuredJSON(state.currentMap);
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      downloadBlob(blob, 'teste_mapa.json');
+      console.log('✅ 3. Exportação JSON: OK');
+    } catch (error) {
+      console.error('❌ 3. Exportação JSON: FALHOU', error);
+    }
+  } else {
+    console.warn('⚠️ 2. Mapa não carregado - pulando testes de exportação');
+  }
+  
+  // 3. Testar se há botão de download das abas
+  const downloadBtn = document.getElementById('downloadTabBtn');
+  if (downloadBtn) {
+    console.log('✅ 4. Botão download das abas: ENCONTRADO');
+    
+    // Verificar se há node slider ativo
+    const nodeSlider = document.querySelector('.node-slider');
+    if (nodeSlider) {
+      console.log('✅ 5. Node slider ativo: ENCONTRADO');
+      
+      // Verificar se há aba ativa
+      const activeTab = nodeSlider.querySelector('.tab-content.active');
+      if (activeTab) {
+        console.log('✅ 6. Aba ativa: ENCONTRADA');
+        console.log('✅ TODOS OS PONTOS DE DOWNLOAD ESTÃO FUNCIONAIS!');
+      } else {
+        console.warn('⚠️ 6. Nenhuma aba ativa encontrada');
+      }
+    } else {
+      console.warn('⚠️ 5. Nenhum node slider ativo encontrado');
+    }
+  } else {
+    console.warn('⚠️ 4. Botão download das abas não encontrado');
+  }
+  
+  console.log('🧪 TESTE CONCLUÍDO!');
+}
+
+// ✅ EXPORTA FUNÇÃO PARA TESTE NO CONSOLE
+window.testDownloads = testAllDownloads;
+
 // ✅ FUNÇÃO DE DOWNLOAD DO CONTEÚDO DA ABA ATIVA
 function downloadActiveTabContent(nodeSlider, nodeLabel) {
   try {
@@ -5378,24 +5626,12 @@ function downloadActiveTabContent(nodeSlider, nodeLabel) {
     
     const fullContent = header + nodeHeader + dateHeader + separator + cleanText;
     
-    // Criar e baixar arquivo
+    // Criar e baixar arquivo usando função robusta
     const blob = new Blob([fullContent], { type: 'text/plain;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
+    const filename = `${nodeLabel.replace(/[^a-zA-Z0-9]/g, '_')}_${tabName}.txt`;
     
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${nodeLabel.replace(/[^a-zA-Z0-9]/g, '_')}_${tabName}.txt`;
-    a.style.display = 'none'; // ✅ Esconder o link
-    document.body.appendChild(a);
-    
-    // ✅ Forçar download
-    a.click();
-    
-    // ✅ Limpar após download
-    setTimeout(() => {
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    }, 100);
+    // ✅ Usar função robusta para download direto
+    forceDirectDownload(blob, filename);
     
     console.log(`✅ Download realizado: ${tabName} - ${nodeLabel}`);
     

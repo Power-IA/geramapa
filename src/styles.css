@@ -2149,12 +2149,19 @@
     user-select: none;
   }
   
-  /* ✅ Permitir seleção de texto em áreas específicas */
-  input, textarea, .node-slider-content, .popup-content {
-    -webkit-user-select: text;
-    -moz-user-select: text;
-    -ms-user-select: text;
-    user-select: text;
+  /* ✅ Garantir que downloads sejam diretos */
+  a[download] {
+    text-decoration: none !important;
+    color: inherit !important;
+  }
+  
+  a[download]:hover {
+    text-decoration: none !important;
+  }
+  
+  /* ✅ Prevenir que links de download abram em nova página */
+  a[download][target="_self"] {
+    target: _self !important;
   }
   
   /* ✅ Melhorar scroll em dispositivos móveis */

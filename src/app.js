@@ -1220,6 +1220,8 @@ async function handleFloatingChatSend() {
     
     if (!state.currentMap) {
       // Se não há mapa, gerar um novo mapa mental
+      // ✅ LIMPAR CHAT ANTES DE GERAR NOVO MAPA
+      floatingChatLog.innerHTML = '';
       addFloatingChatMessage('system', '🔄 Gerando novo mapa mental...');
       
       guardProvider();
@@ -1715,6 +1717,10 @@ deleteMapBtn.addEventListener('click', () => {
   state.currentMap = null;
   clearOverlays();
   deleteMapBtn.disabled = true;
+  
+  // ✅ LIMPAR CHAT QUANDO MAPA É FECHADO
+  floatingChatLog.innerHTML = '';
+  
   // hide model selector and floating chat because they are map-specific
   modelSelector.classList.remove('open');
   floatingChat.style.display = 'none';
@@ -1832,6 +1838,9 @@ savedMapsList.addEventListener('click', (ev) => {
       state.cy.elements().remove();
       clearOverlays();
       deleteMapBtn.disabled = true;
+      
+      // ✅ LIMPAR CHAT QUANDO MAPA É DELETADO
+      floatingChatLog.innerHTML = '';
       // hide model selector and floating chat because they are tied to the removed map
       modelSelector.classList.remove('open');
       
@@ -2602,6 +2611,7 @@ async function showTooltipForNode(node, anchorEl, mapJson) {
               <button data-tab="palestra" class="tab">Palestra</button>
               <button data-tab="roteiro" class="tab">Roteiro Curto</button>
               <button data-tab="exercicio" class="tab">Exercício</button>
+              <button id="downloadTabBtn" class="tab download-tab" title="Download conteúdo da aba ativa">📥</button>
             </div>
             <div class="node-tabs-body">
               <div data-tab-content="normal" class="tab-content active">${normalHtml}</div>
@@ -2654,6 +2664,15 @@ async function showTooltipForNode(node, anchorEl, mapJson) {
         // tab switching logic
         const header = nodeSlider.querySelector('.node-tabs-header');
         header.addEventListener('click', async (ev) => {
+          // ✅ BOTÃO DE DOWNLOAD
+          if (ev.target.id === 'downloadTabBtn') {
+            ev.preventDefault();
+            ev.stopPropagation();
+            ev.stopImmediatePropagation();
+            downloadActiveTabContent(nodeSlider, nodeLabel);
+            return false;
+          }
+          
           const btn = ev.target.closest('button[data-tab]');
           if (!btn) return;
           const tab = btn.dataset.tab;
@@ -2665,6 +2684,15 @@ async function showTooltipForNode(node, anchorEl, mapJson) {
           if (activeContent) activeContent.classList.add('active');
           const target = nodeSlider.querySelector(`.tab-content[data-tab-content="${tab}"]`);
           if (!target) return;
+          
+          // ✅ VERIFICAR SE JÁ TEM CONTEÚDO SALVO (OFFLINE)
+          const savedContent = loadTabContentFromStorage(nodeLabel, tab);
+          if (savedContent) {
+            target.innerHTML = savedContent;
+            target.dataset.loading = '1';
+            console.log(`📂 Conteúdo carregado do cache: ${tab}`);
+            return;
+          }
           
           if (tab === 'roteiro') {
             // Roteiro Curto: displays model selection UI immediately
@@ -3097,6 +3125,10 @@ async function showTooltipForNode(node, anchorEl, mapJson) {
             console.log('✅ Resposta da IA recebida:', resp.substring(0, 100) + '...');
             const html = await renderMd(resp);
             target.innerHTML = html + (tab === 'palestra' ? `<div style="margin-top:12px"><button class="btn primary generate-quiz">Gerar Quiz</button><div class="quiz-area" style="margin-top:12px"></div></div>` : '');
+            
+            // ✅ SALVAR CONTEÚDO NO LOCALSTORAGE (OFFLINE)
+            saveTabContentToStorage(nodeLabel, tab, html);
+            
             console.log('✅ Conteúdo renderizado na aba:', tab);
             // wire quiz button if present
             if (tab === 'palestra') {
@@ -5259,6 +5291,118 @@ function removeNodeFromMap(nodeId) {
 function closePopup(popupType) {
   // Implementação básica - pode ser expandida conforme necessário
   console.log(`Fechando popup: ${popupType}`);
+}
+
+// ✅ FUNÇÕES DE ARMAZENAMENTO OFFLINE
+function saveTabContentToStorage(nodeLabel, tabName, content) {
+  try {
+    const storageKey = `tab_content_${nodeLabel.replace(/[^a-zA-Z0-9]/g, '_')}_${tabName}`;
+    const data = {
+      content: content,
+      timestamp: new Date().toISOString(),
+      nodeLabel: nodeLabel,
+      tabName: tabName
+    };
+    localStorage.setItem(storageKey, JSON.stringify(data));
+    console.log(`💾 Conteúdo salvo offline: ${nodeLabel} - ${tabName}`);
+  } catch (error) {
+    console.error('❌ Erro ao salvar no localStorage:', error);
+  }
+}
+
+function loadTabContentFromStorage(nodeLabel, tabName) {
+  try {
+    const storageKey = `tab_content_${nodeLabel.replace(/[^a-zA-Z0-9]/g, '_')}_${tabName}`;
+    const stored = localStorage.getItem(storageKey);
+    if (stored) {
+      const data = JSON.parse(stored);
+      console.log(`📂 Conteúdo carregado offline: ${nodeLabel} - ${tabName}`);
+      return data.content;
+    }
+    return null;
+  } catch (error) {
+    console.error('❌ Erro ao carregar do localStorage:', error);
+    return null;
+  }
+}
+
+function hasStoredContent(nodeLabel, tabName) {
+  try {
+    const storageKey = `tab_content_${nodeLabel.replace(/[^a-zA-Z0-9]/g, '_')}_${tabName}`;
+    return localStorage.getItem(storageKey) !== null;
+  } catch (error) {
+    return false;
+  }
+}
+
+// ✅ FUNÇÃO DE DOWNLOAD DO CONTEÚDO DA ABA ATIVA
+function downloadActiveTabContent(nodeSlider, nodeLabel) {
+  try {
+    // Encontrar a aba ativa
+    const activeTab = nodeSlider.querySelector('.tab-content.active');
+    if (!activeTab) {
+      console.warn('Nenhuma aba ativa encontrada');
+      return;
+    }
+    
+    // Obter o nome da aba ativa
+    const activeTabButton = nodeSlider.querySelector('.tab.active[data-tab]');
+    const tabName = activeTabButton ? activeTabButton.dataset.tab : 'conteudo';
+    
+    // Extrair texto do conteúdo HTML
+    let content = activeTab.innerHTML;
+    
+    // Converter HTML para texto limpo
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = content;
+    
+    // Remover elementos de interface (botões, inputs, etc.)
+    tempDiv.querySelectorAll('button, input, select, .btn, .card-actions').forEach(el => el.remove());
+    
+    // Obter texto limpo
+    let cleanText = tempDiv.textContent || tempDiv.innerText || '';
+    
+    // Limpar espaços extras
+    cleanText = cleanText.replace(/\s+/g, ' ').trim();
+    
+    // Se não há conteúdo, usar HTML como fallback
+    if (!cleanText || cleanText.length < 10) {
+      cleanText = content.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+    }
+    
+    // Criar cabeçalho do arquivo
+    const header = `=== CONTEÚDO DA ABA: ${tabName.toUpperCase()} ===\n`;
+    const nodeHeader = `Nó: ${nodeLabel}\n`;
+    const dateHeader = `Data: ${new Date().toLocaleString('pt-BR')}\n`;
+    const separator = '='.repeat(50) + '\n\n';
+    
+    const fullContent = header + nodeHeader + dateHeader + separator + cleanText;
+    
+    // Criar e baixar arquivo
+    const blob = new Blob([fullContent], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${nodeLabel.replace(/[^a-zA-Z0-9]/g, '_')}_${tabName}.txt`;
+    a.style.display = 'none'; // ✅ Esconder o link
+    document.body.appendChild(a);
+    
+    // ✅ Forçar download
+    a.click();
+    
+    // ✅ Limpar após download
+    setTimeout(() => {
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }, 100);
+    
+    console.log(`✅ Download realizado: ${tabName} - ${nodeLabel}`);
+    
+  } catch (error) {
+    console.error('❌ Erro ao fazer download:', error);
+    alert('Erro ao fazer download do conteúdo. Tente novamente.');
+  }
 }
 
 // Initialize app when DOM is loaded with extension safety

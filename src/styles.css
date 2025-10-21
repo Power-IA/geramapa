@@ -3270,19 +3270,45 @@
   /* Tabs inside node-slider */
   .node-tabs { display:flex; flex-direction:column; gap:8px; } /* Reduzido gap de 12px para 8px */
   .node-tabs-header {
-    display:flex; gap:6px; align-items:center; padding-bottom:6px; border-bottom:1px solid var(--border); /* Reduzido gap de 8px para 6px e padding de 8px para 6px */
+    display:flex; gap:6px; align-items:center; padding-bottom:6px; border-bottom:1px solid var(--border);
     position: -webkit-sticky; position: sticky;
     top: 0;
     background: var(--bg);
     z-index: 120;
     margin: 0;
+    flex-wrap: nowrap; /* ✅ Evita quebra de linha das abas */
+    overflow-x: auto; /* ✅ Permite scroll horizontal se necessário */
     /* subtle shadow when content scrolls under it */
     box-shadow: 0 2px 8px rgba(0,0,0,0.04);
   }
   .node-tabs-header .tab {
     background: transparent; border:1px solid var(--border); padding:6px 10px; border-radius:6px; cursor:pointer; font-weight:600; font-size:12px;
+    white-space: nowrap; /* ✅ Evita quebra de texto */
+    overflow: hidden; /* ✅ Esconde texto que não cabe */
+    text-overflow: ellipsis; /* ✅ Mostra "..." se texto for muito longo */
+    min-width: fit-content; /* ✅ Largura mínima baseada no conteúdo */
+    flex-shrink: 0; /* ✅ Evita que as abas encolham demais */
   }
   .node-tabs-header .tab.active { background: var(--accent); color:#fff; border-color: var(--accent); }
+  .node-tabs-header .tab.download-tab { 
+    background: linear-gradient(135deg, #28a745, #20c997); 
+    color: white; 
+    border-color: #28a745;
+    font-weight: 600;
+    padding: 4px 8px; /* ✅ Menor padding */
+    min-width: 32px; /* ✅ Largura mínima menor */
+    font-size: 14px; /* ✅ Fonte menor */
+  }
+  .node-tabs-header .tab.download-tab:hover { 
+    background: linear-gradient(135deg, #218838, #1e7e34); 
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+  }
+  .node-tabs-header .tab.download-tab {
+    cursor: pointer !important;
+    text-decoration: none !important;
+    border: none !important;
+  }
   .node-tabs-body { display:block; }
   .tab-content { display:none; }
   .tab-content.active { display:block; }
@@ -3676,6 +3702,17 @@
     padding: 15px !important;
   }
   
+  /* ✅ Abas responsivas */
+  .node-tabs-header {
+    gap: 4px; /* Gap menor em telas médias */
+    padding-bottom: 4px;
+  }
+  
+  .node-tabs-header .tab {
+    padding: 4px 8px; /* Padding menor */
+    font-size: 11px; /* Fonte menor */
+  }
+  
   .color-circle {
     width: 22px;
     height: 22px;
@@ -3706,6 +3743,17 @@
     width: 160px !important;
     height: 160px !important;
     padding: 12px !important;
+  }
+  
+  /* ✅ Abas responsivas para telas pequenas */
+  .node-tabs-header {
+    gap: 3px; /* Gap ainda menor */
+    padding-bottom: 3px;
+  }
+  
+  .node-tabs-header .tab {
+    padding: 3px 6px; /* Padding mínimo */
+    font-size: 10px; /* Fonte bem pequena */
   }
   
   .color-circle {

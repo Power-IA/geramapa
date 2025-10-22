@@ -4065,3 +4065,161 @@
 .marker-path:hover {
   opacity: 0.9 !important;
 }
+
+/* ========================================
+   ☕ ÍCONE "PAGUE UM CAFÉ" DESLOCÁVEL
+   ======================================== */
+
+.coffee-icon {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 1000;
+  cursor: move;
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  
+  /* ✅ Animação pulsante mais visível e chamativa */
+  animation: coffeePulse 1.2s ease-in-out infinite;
+  
+  /* ✅ Fundo marrom claro para contraste com texto preto */
+  background: rgba(210, 180, 140, 0.95);
+  backdrop-filter: blur(15px);
+  border: 2px solid rgba(139, 69, 19, 0.4);
+  border-radius: 30px;
+  padding: 10px 15px;
+  
+  /* ✅ Sombra mais pronunciada */
+  box-shadow: 0 6px 25px rgba(0, 0, 0, 0.2);
+  
+  /* ✅ Transição suave */
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.coffee-icon:hover {
+  transform: scale(1.08);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+  background: rgba(210, 180, 140, 1);
+  border-color: rgba(139, 69, 19, 0.7);
+}
+
+.coffee-icon.dragging {
+  cursor: grabbing;
+  transform: scale(1.15);
+  box-shadow: 0 10px 35px rgba(0, 0, 0, 0.4);
+  background: rgba(210, 180, 140, 1);
+  border-color: rgba(139, 69, 19, 0.8);
+}
+
+.coffee-link {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+}
+
+.coffee-emoji {
+  font-size: 18px;
+  animation: coffeeSteam 3s ease-in-out infinite;
+}
+
+.coffee-text {
+  font-size: 12px;
+  font-weight: 700;
+  color: #000000;
+  white-space: nowrap;
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.3);
+  
+  /* ✅ Cor preta para máximo contraste */
+  background: none;
+  -webkit-background-clip: unset;
+  -webkit-text-fill-color: unset;
+  background-clip: unset;
+}
+
+/* ✅ Animações melhoradas - pulsação com tema marrom */
+@keyframes coffeePulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 6px 25px rgba(0, 0, 0, 0.2);
+    background: rgba(210, 180, 140, 0.95);
+    border-color: rgba(139, 69, 19, 0.4);
+  }
+  50% {
+    transform: scale(1.12);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+    background: rgba(210, 180, 140, 1);
+    border-color: rgba(139, 69, 19, 0.7);
+  }
+}
+
+@keyframes coffeeSteam {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  25% {
+    transform: translateY(-2px) rotate(1deg);
+  }
+  75% {
+    transform: translateY(-1px) rotate(-1deg);
+  }
+}
+
+/* ✅ Responsividade */
+@media (max-width: 768px) {
+  .coffee-icon {
+    bottom: 15px;
+    right: 15px;
+    padding: 6px 10px;
+  }
+  
+  .coffee-emoji {
+    font-size: 16px;
+  }
+  
+  .coffee-text {
+    font-size: 11px;
+  }
+}
+
+@media (max-width: 480px) {
+  .coffee-icon {
+    bottom: 10px;
+    right: 10px;
+    padding: 5px 8px;
+  }
+  
+  .coffee-emoji {
+    font-size: 14px;
+  }
+  
+  .coffee-text {
+    font-size: 10px;
+  }
+}
+
+/* ✅ Modo escuro com tema marrom */
+@media (prefers-color-scheme: dark) {
+  .coffee-icon {
+    background: rgba(101, 67, 33, 0.9);
+    border: 2px solid rgba(160, 82, 45, 0.4);
+  }
+  
+  .coffee-icon:hover {
+    background: rgba(101, 67, 33, 1);
+    border-color: rgba(160, 82, 45, 0.7);
+  }
+  
+  .coffee-text {
+    color: #FFFFFF;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+    background: none;
+    -webkit-background-clip: unset;
+    -webkit-text-fill-color: unset;
+    background-clip: unset;
+  }
+}

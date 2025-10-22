@@ -88,22 +88,34 @@ window.MapEngine.initCy = function(container) {
   });
 };
 
-// Garante que qualquer zoom (roda do mouse) seja ancorado no centro da viewport
+// ✅ CORREÇÃO: Sistema unificado de zoom que preserva posições
 function enableCenteredZoom(cy) {
   try {
     const container = cy.container();
     if (!container) return;
+    
     container.addEventListener('wheel', function(e) {
       if (!e) return;
-      // Intercepta gesto de zoom (trackpad/pinch/wheel com ctrl) e ancora no centro
+      
+      // Intercepta gesto de zoom (trackpad/pinch/wheel com ctrl)
       const isZoomGesture = e.ctrlKey || Math.abs(e.deltaY) > Math.abs(e.deltaX);
       if (!isZoomGesture) return;
+      
       e.preventDefault();
-      const current = cy.zoom();
+      
+      // ✅ CORREÇÃO: Usar performZoom em vez de zoom direto
       const factor = e.deltaY < 0 ? 1.1 : 0.9;
-      const target = Math.max(cy.minZoom() || 0.01, Math.min(cy.maxZoom() || 10, current * factor));
-      const center = { x: (container.clientWidth || 0) / 2, y: (container.clientHeight || 0) / 2 };
-      cy.zoom({ level: target, renderedPosition: center });
+      
+      // ✅ CORREÇÃO: Usar sistema unificado que preserva posições
+      if (window.performZoom) {
+        window.performZoom(factor, false);
+      } else {
+        // Fallback se performZoom não estiver disponível
+        const current = cy.zoom();
+        const target = Math.max(cy.minZoom() || 0.01, Math.min(cy.maxZoom() || 10, current * factor));
+        const center = { x: (container.clientWidth || 0) / 2, y: (container.clientHeight || 0) / 2 };
+        cy.zoom({ level: target, renderedPosition: center });
+      }
     }, { passive: false });
   } catch (_) { /* noop */ }
 }
@@ -164,9 +176,18 @@ function applySingleNodeZoom(cy) {
       const n = nodes[0];
       const currentZoom = cy.zoom();
       const targetZoom = Math.max(cy.minZoom() || 0.01, currentZoom * 0.3); // reduz 70%
-      // centralizar e aplicar zoom relativo ao nó
-      cy.zoom({ level: targetZoom, position: n.position() });
-      console.log('🔎 Ajuste de zoom para nó único aplicado');
+      
+      // ✅ CORREÇÃO: Aplicar zoom centrado SEM mover o nó
+      // Salvar posição atual do nó
+      const nodePos = n.position();
+      
+      // Aplicar zoom centrado na tela (não na posição do nó)
+      cy.zoom({ level: targetZoom, position: { x: 0, y: 0 } });
+      
+      // Garantir que o nó permaneça na posição original
+      n.position(nodePos);
+      
+      console.log('🔎 Ajuste de zoom para nó único aplicado (sem movimento)');
     }
   } catch (e) { /* noop */ }
 }
@@ -339,25 +360,31 @@ window.MapEngine.renderMindMap = function(cy, mapJson, layoutModel = 'default', 
     
     // ===== ATIVAR AUTO-ORGANIZAÇÃO AUTOMÁTICA =====
     // Sistema que funciona continuamente para manter nós organizados
-    window.LayoutAlgorithm.startAutoOrganization(cy, {
-      minGap: 50,           // Distância mínima MUITO aumentada para evitar aglomeração
-      damping: 0.6,         // Menos damping para movimento mais eficaz
-      stepMax: 20,          // Movimento máximo aumentado
-      forceStrength: 2.5,   // Força de repulsão MUITO aumentada
-      interval: 16,         // Intervalo menor para 60fps (mais responsivo)
-      enableHierarchy: true, // Respeitar hierarquia
-      enableRootAnchor: true // Manter nó raiz ancorado
-    });
-    
-    // Resolver clusters críticos imediatamente após layout
-    setTimeout(() => {
-      const clustersResolved = window.LayoutAlgorithm.resolveCriticalClusters(cy);
-      if (clustersResolved > 0) {
-        console.log(`🎯 ${clustersResolved} clusters críticos resolvidos após layout`);
-      }
-    }, 100);
-    
-    console.log('🧠 Sistema de auto-organização automática ATIVADO para todos os modelos');
+    // ✅ CORREÇÃO: Desabilitar auto-organização para nó único
+    const nodeCount = cy.nodes().length;
+    if (nodeCount > 1) {
+      window.LayoutAlgorithm.startAutoOrganization(cy, {
+        minGap: 50,           // Distância mínima MUITO aumentada para evitar aglomeração
+        damping: 0.6,         // Menos damping para movimento mais eficaz
+        stepMax: 20,          // Movimento máximo aumentado
+        forceStrength: 2.5,   // Força de repulsão MUITO aumentada
+        interval: 16,         // Intervalo menor para 60fps (mais responsivo)
+        enableHierarchy: true, // Respeitar hierarquia
+        enableRootAnchor: true // Manter nó raiz ancorado
+      });
+      
+      // Resolver clusters críticos imediatamente após layout
+      setTimeout(() => {
+        const clustersResolved = window.LayoutAlgorithm.resolveCriticalClusters(cy);
+        if (clustersResolved > 0) {
+          console.log(`🎯 ${clustersResolved} clusters críticos resolvidos após layout`);
+        }
+      }, 100);
+      
+      console.log('🧠 Sistema de auto-organização automática ATIVADO para múltiplos nós');
+    } else {
+      console.log('🔒 Auto-organização DESABILITADA para nó único (evita movimento indesejado)');
+    }
   } else {
     console.log('🔒 Layout pulado - preservando viewport');
   }

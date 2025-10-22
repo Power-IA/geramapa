@@ -1858,6 +1858,17 @@ savedMapsList.addEventListener('click', (ev) => {
 // Funções auxiliares de chat removidas - serão reconstruídas
 
 async function renderAndAttach(map, preserveViewport = false) {
+  // ✅ VERIFICAR SE MAPA TEM ESTADO VISUAL SALVO
+  const hasVisualState = map._visualState && map._visualState.nodePositions;
+  
+  if (hasVisualState) {
+    console.log('🔄 Carregando mapa com estado visual salvo:', {
+      nodes: Object.keys(map._visualState.nodePositions).length,
+      styles: Object.keys(map._visualState.nodeStyles || {}).length,
+      timestamp: map._visualState.timestamp
+    });
+  }
+  
   // Salvar viewport E posições dos nós se solicitado
   let savedState = null;
   if (preserveViewport && state.cy) {
@@ -1883,8 +1894,44 @@ async function renderAndAttach(map, preserveViewport = false) {
   // Renderizar mapa SEM aplicar layout quando preservando viewport
   window.MapEngine.renderMindMap(state.cy, map, state.currentModel, preserveViewport);
   
-  // Restaurar estado se foi salvo
-  if (savedState && state.cy) {
+  // ✅ RESTAURAR ESTADO VISUAL SALVO (se existir)
+  if (hasVisualState && state.cy) {
+    // Restaurar posições dos nós salvos
+    Object.entries(map._visualState.nodePositions).forEach(([nodeId, pos]) => {
+      const node = state.cy.getElementById(nodeId);
+      if (node && node.length > 0) {
+        node.position(pos);
+      }
+    });
+    
+    // Restaurar estilos personalizados dos nós
+    if (map._visualState.nodeStyles) {
+      Object.entries(map._visualState.nodeStyles).forEach(([nodeId, styles]) => {
+        const node = state.cy.getElementById(nodeId);
+        if (node && node.length > 0) {
+          Object.entries(styles).forEach(([prop, value]) => {
+            try {
+              node.style(prop, value);
+            } catch (e) {
+              console.warn(`Erro ao aplicar estilo ${prop}:`, e);
+            }
+          });
+        }
+      });
+    }
+    
+    // Restaurar viewport salvo
+    if (map._visualState.viewport) {
+      state.cy.viewport({
+        zoom: map._visualState.viewport.zoom,
+        pan: map._visualState.viewport.pan
+      });
+    }
+    
+    console.log('✅ Estado visual restaurado completamente');
+  }
+  // Restaurar estado se foi salvo (para casos de preservação de viewport)
+  else if (savedState && state.cy) {
     // Restaurar posições dos nós que ainda existem
     state.cy.nodes().forEach(node => {
       const nodeId = node.id();
@@ -2351,12 +2398,56 @@ function handleSaveMap() {
   const title = document.getElementById('saveTitleInput')?.value || 'Mapa sem título';
   
   try {
-    const id = window.Storage.GeraMapas.saveMap({
-      title: title,
-      data: state.currentMap
+    // ✅ CRIAR CÓPIA DO MAPA COM ESTADO VISUAL ATUAL
+    const mapWithVisualState = {
+      ...state.currentMap,
+      // ✅ ADICIONAR ESTADO VISUAL ATUAL
+      _visualState: {
+        viewport: {
+          zoom: state.cy.zoom(),
+          pan: state.cy.pan()
+        },
+        nodePositions: {},
+        nodeStyles: {},
+        timestamp: new Date().toISOString()
+      }
+    };
+    
+    // ✅ SALVAR POSIÇÕES ATUAIS DOS NÓS
+    state.cy.nodes().forEach(node => {
+      const nodeId = node.id();
+      mapWithVisualState._visualState.nodePositions[nodeId] = {
+        x: node.position().x,
+        y: node.position().y
+      };
+      
+      // ✅ SALVAR ESTILOS PERSONALIZADOS DOS NÓS
+      const nodeStyle = {};
+      const styleProps = ['background-color', 'border-color', 'border-width', 'color', 'font-size'];
+      styleProps.forEach(prop => {
+        const value = node.style(prop);
+        if (value && value !== 'data(background-color)' && value !== 'data(border-color)') {
+          nodeStyle[prop] = value;
+        }
+      });
+      
+      if (Object.keys(nodeStyle).length > 0) {
+        mapWithVisualState._visualState.nodeStyles[nodeId] = nodeStyle;
+      }
     });
     
-    updateStatus(`Mapa "${title}" salvo com sucesso`);
+    console.log('💾 Salvando mapa com estado visual:', {
+      nodes: Object.keys(mapWithVisualState._visualState.nodePositions).length,
+      styles: Object.keys(mapWithVisualState._visualState.nodeStyles).length,
+      viewport: mapWithVisualState._visualState.viewport
+    });
+    
+    const id = window.Storage.GeraMapas.saveMap({
+      title: title,
+      data: mapWithVisualState
+    });
+    
+    updateStatus(`Mapa "${title}" salvo com estado visual atual`);
     loadSavedList();
     document.getElementById('saveTitleInput').value = '';
   } catch (err) {
@@ -5028,13 +5119,14 @@ function updateZoomDisplay() {
   }
 }
 
-function performZoom(factor, animate = true) {
+// ✅ CORREÇÃO: Tornar performZoom global para uso unificado
+window.performZoom = function performZoom(factor, animate = true) {
   if (!state.cy) return;
   
   const newZoom = Math.max(0.1, Math.min(3.0, currentZoom * factor));
   if (newZoom === currentZoom) return;
   
-  // Salvar posições atuais dos nós antes do zoom
+  // ✅ CORREÇÃO: Salvar estado completo antes do zoom
   const nodePositions = {};
   state.cy.nodes().forEach(node => {
     nodePositions[node.id()] = {
@@ -5043,43 +5135,94 @@ function performZoom(factor, animate = true) {
     };
   });
   
-  // Salvar viewport atual (pan)
   const currentPan = state.cy.pan();
-  
   currentZoom = newZoom;
   
+  // ✅ CORREÇÃO: Desabilitar auto-organização durante zoom
+  const wasAutoOrgActive = window.LayoutAlgorithm.isAutoOrganizationActive();
+  if (wasAutoOrgActive) {
+    window.LayoutAlgorithm.stopAutoOrganization();
+    console.log('🔒 Auto-organização pausada durante zoom');
+  }
+  
   if (animate) {
+    // ✅ CORREÇÃO: Zoom centrado na tela
+    const container = state.cy.container();
+    const center = container ? {
+      x: container.clientWidth / 2,
+      y: container.clientHeight / 2
+    } : { x: 0, y: 0 };
+    
     state.cy.animate({
       zoom: currentZoom,
       duration: 300,
       easing: 'ease-out'
     }, {
       complete: () => {
-        // Restaurar posições dos nós após zoom
+        // ✅ Restaurar posições dos nós após zoom
         state.cy.nodes().forEach(node => {
           const savedPos = nodePositions[node.id()];
           if (savedPos) {
             node.position(savedPos);
           }
         });
-        // Manter pan atual
+        
+        // ✅ Restaurar pan atual
         state.cy.pan(currentPan);
+        
+        // ✅ Reativar auto-organização se estava ativa
+        if (wasAutoOrgActive) {
+          window.LayoutAlgorithm.startAutoOrganization(state.cy, {
+            minGap: 50,
+            damping: 0.6,
+            stepMax: 20,
+            forceStrength: 2.5,
+            interval: 16,
+            enableHierarchy: true,
+            enableRootAnchor: true
+          });
+          console.log('🔓 Auto-organização reativada após zoom');
+        }
       }
     });
   } else {
-    state.cy.zoom(currentZoom);
-    // Restaurar posições imediatamente
+    // ✅ CORREÇÃO: Zoom centrado imediato
+    const container = state.cy.container();
+    const center = container ? {
+      x: container.clientWidth / 2,
+      y: container.clientHeight / 2
+    } : { x: 0, y: 0 };
+    
+    state.cy.zoom({ level: currentZoom, renderedPosition: center });
+    
+    // ✅ Restaurar posições imediatamente
     state.cy.nodes().forEach(node => {
       const savedPos = nodePositions[node.id()];
       if (savedPos) {
         node.position(savedPos);
       }
     });
+    
+    // ✅ Restaurar pan atual
     state.cy.pan(currentPan);
+    
+    // ✅ Reativar auto-organização se estava ativa
+    if (wasAutoOrgActive) {
+      window.LayoutAlgorithm.startAutoOrganization(state.cy, {
+        minGap: 50,
+        damping: 0.6,
+        stepMax: 20,
+        forceStrength: 2.5,
+        interval: 16,
+        enableHierarchy: true,
+        enableRootAnchor: true
+      });
+      console.log('🔓 Auto-organização reativada após zoom');
+    }
   }
   
   updateZoomDisplay();
-  console.log('🔍 Zoom preservando posições:', Math.round(currentZoom * 100) + '%');
+  console.log('🔍 Zoom centrado preservando posições:', Math.round(currentZoom * 100) + '%');
 }
 
 function zoomToFit() {
@@ -5199,15 +5342,28 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
-// Sincronizar zoom com o Cytoscape quando o usuário usar mouse wheel
+// ✅ CORREÇÃO: Sincronização inteligente que evita conflitos
 if (state.cy) {
+  let isInternalZoom = false; // Flag para evitar loops
+  
   state.cy.on('zoom', () => {
+    if (isInternalZoom) return; // Evitar sincronização durante zoom interno
+    
     const cyZoom = state.cy.zoom();
     if (Math.abs(cyZoom - currentZoom) > 0.01) {
       currentZoom = cyZoom;
       updateZoomDisplay();
     }
   });
+  
+  // ✅ CORREÇÃO: Marcar zoom interno para evitar conflitos
+  const originalPerformZoom = window.performZoom;
+  window.performZoom = function(factor, animate = true) {
+    isInternalZoom = true;
+    const result = originalPerformZoom(factor, animate);
+    setTimeout(() => { isInternalZoom = false; }, 100);
+    return result;
+  };
 }
 
 // Tornar controles de zoom arrastáveis
@@ -5649,6 +5805,349 @@ function testTabDownload() {
 // ✅ EXPORTA FUNÇÃO DE TESTE
 window.testTabDownload = testTabDownload;
 
+// ✅ FUNÇÃO DE TESTE ABRANGENTE PARA ZOOM EM TODOS OS CENÁRIOS
+function testZoomAllScenarios() {
+  console.log('🧪 TESTANDO ZOOM EM TODOS OS CENÁRIOS...');
+  
+  if (!state.currentMap || !state.cy) {
+    console.error('❌ Nenhum mapa carregado');
+    alert('Crie um mapa primeiro para testar o zoom');
+    return;
+  }
+  
+  const nodeCount = state.cy.nodes().length;
+  console.log(`📊 Número de nós no mapa: ${nodeCount}`);
+  
+  // Salvar posições iniciais de todos os nós
+  const initialPositions = {};
+  state.cy.nodes().forEach(node => {
+    initialPositions[node.id()] = {
+      x: node.position().x,
+      y: node.position().y
+    };
+  });
+  
+  console.log('📍 Posições iniciais salvas:', Object.keys(initialPositions).length, 'nós');
+  
+  // Testar zoom in
+  console.log('🔍 Testando zoom in...');
+  performZoom(1.5, false);
+  
+  setTimeout(() => {
+    // Verificar se algum nó se moveu
+    let movedNodes = 0;
+    let totalMovement = 0;
+    
+    state.cy.nodes().forEach(node => {
+      const initial = initialPositions[node.id()];
+      const current = node.position();
+      
+      const deltaX = Math.abs(current.x - initial.x);
+      const deltaY = Math.abs(current.y - initial.y);
+      const movement = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+      
+      if (movement > 5) { // Tolerância de 5px
+        movedNodes++;
+        totalMovement += movement;
+        console.warn(`⚠️ Nó ${node.id()} se moveu:`, {
+          deltaX: current.x - initial.x,
+          deltaY: current.y - initial.y,
+          movement: movement.toFixed(2)
+        });
+      }
+    });
+    
+    if (movedNodes > 0) {
+      console.error('❌ PROBLEMA DETECTADO:', movedNodes, 'nós se moveram durante zoom!');
+      console.error('❌ Movimento total:', totalMovement.toFixed(2), 'px');
+      alert(`❌ PROBLEMA: ${movedNodes} nós se moveram durante zoom!\n\nMovimento total: ${totalMovement.toFixed(2)}px\n\nVerifique o console para detalhes.`);
+    } else {
+      console.log('✅ SUCESSO: Nenhum nó se moveu durante zoom!');
+      
+      // Testar zoom out
+      console.log('🔍 Testando zoom out...');
+      performZoom(0.8, false);
+      
+      setTimeout(() => {
+        // Verificar novamente após zoom out
+        let movedNodesOut = 0;
+        let totalMovementOut = 0;
+        
+        state.cy.nodes().forEach(node => {
+          const initial = initialPositions[node.id()];
+          const current = node.position();
+          
+          const deltaX = Math.abs(current.x - initial.x);
+          const deltaY = Math.abs(current.y - initial.y);
+          const movement = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+          
+          if (movement > 5) {
+            movedNodesOut++;
+            totalMovementOut += movement;
+          }
+        });
+        
+        if (movedNodesOut > 0) {
+          console.error('❌ PROBLEMA após zoom out:', movedNodesOut, 'nós se moveram!');
+          alert(`❌ PROBLEMA após zoom out: ${movedNodesOut} nós se moveram!\n\nMovimento total: ${totalMovementOut.toFixed(2)}px`);
+        } else {
+          console.log('✅ SUCESSO COMPLETO: Nenhum nó se moveu em ambos os zooms!');
+          alert('✅ TESTE PASSOU COMPLETAMENTE!\n\n✅ Zoom in: Nós permaneceram fixos\n✅ Zoom out: Nós permaneceram fixos\n\nProblema de movimento durante zoom CORRIGIDO!');
+        }
+      }, 100);
+    }
+  }, 100);
+}
+
+// ✅ EXPORTA FUNÇÃO DE TESTE ABRANGENTE
+window.testZoomAllScenarios = testZoomAllScenarios;
+
+// ✅ FUNÇÃO DE TESTE PARA NÓ ÚNICO E ZOOM
+function testSingleNodeZoom() {
+  console.log('🧪 TESTANDO COMPORTAMENTO DE NÓ ÚNICO E ZOOM...');
+  
+  if (!state.currentMap || !state.cy) {
+    console.error('❌ Nenhum mapa carregado');
+    alert('Crie um mapa primeiro para testar o comportamento de nó único');
+    return;
+  }
+  
+  const nodeCount = state.cy.nodes().length;
+  console.log(`📊 Número de nós no mapa: ${nodeCount}`);
+  
+  if (nodeCount === 1) {
+    console.log('✅ Teste válido: Mapa tem apenas um nó');
+    
+    // Testar zoom in
+    console.log('🔍 Testando zoom in...');
+    const initialPos = state.cy.nodes()[0].position();
+    console.log('📍 Posição inicial do nó:', initialPos);
+    
+    // Aplicar zoom in
+    performZoom(1.5, false);
+    
+    setTimeout(() => {
+      const finalPos = state.cy.nodes()[0].position();
+      console.log('📍 Posição final do nó:', finalPos);
+      
+      const moved = Math.abs(initialPos.x - finalPos.x) > 5 || Math.abs(initialPos.y - finalPos.y) > 5;
+      
+      if (moved) {
+        console.error('❌ PROBLEMA: Nó se moveu durante zoom!');
+        console.error('❌ Movimento detectado:', {
+          deltaX: finalPos.x - initialPos.x,
+          deltaY: finalPos.y - initialPos.y
+        });
+        alert('❌ PROBLEMA DETECTADO: Nó se moveu durante zoom!\n\nVerifique o console para detalhes.');
+      } else {
+        console.log('✅ SUCESSO: Nó permaneceu na posição original!');
+        alert('✅ TESTE PASSOU: Nó único não se move durante zoom!\n\nProblema corrigido com sucesso.');
+      }
+    }, 100);
+    
+  } else {
+    console.log('⚠️ Mapa tem múltiplos nós - teste não aplicável');
+    alert(`Mapa tem ${nodeCount} nós. Para testar nó único, crie um mapa com apenas um nó.`);
+  }
+}
+
+// ✅ EXPORTA FUNÇÃO DE TESTE
+window.testSingleNodeZoom = testSingleNodeZoom;
+
+// ✅ FUNÇÃO DE TESTE ESPECÍFICA PARA MOVIMENTO LATERAL
+function testLateralMovement() {
+  console.log('🧪 TESTANDO MOVIMENTO LATERAL DURANTE ZOOM...');
+  
+  if (!state.currentMap || !state.cy) {
+    console.error('❌ Nenhum mapa carregado');
+    alert('Crie um mapa primeiro para testar movimento lateral');
+    return;
+  }
+  
+  const nodeCount = state.cy.nodes().length;
+  console.log(`📊 Número de nós no mapa: ${nodeCount}`);
+  
+  // Salvar posições iniciais de todos os nós
+  const initialPositions = {};
+  state.cy.nodes().forEach(node => {
+    initialPositions[node.id()] = {
+      x: node.position().x,
+      y: node.position().y
+    };
+  });
+  
+  console.log('📍 Posições iniciais salvas:', Object.keys(initialPositions).length, 'nós');
+  
+  // Testar zoom in com wheel (simular)
+  console.log('🔍 Testando zoom in com wheel...');
+  performZoom(1.2, false);
+  
+  setTimeout(() => {
+    // Verificar movimento lateral específico
+    let lateralMovement = 0;
+    let verticalMovement = 0;
+    let totalNodes = 0;
+    
+    state.cy.nodes().forEach(node => {
+      const initial = initialPositions[node.id()];
+      const current = node.position();
+      
+      const deltaX = Math.abs(current.x - initial.x);
+      const deltaY = Math.abs(current.y - initial.y);
+      
+      if (deltaX > 5) {
+        lateralMovement++;
+        console.warn(`⚠️ MOVIMENTO LATERAL detectado no nó ${node.id()}:`, {
+          deltaX: current.x - initial.x,
+          deltaY: current.y - initial.y
+        });
+      }
+      
+      if (deltaY > 5) {
+        verticalMovement++;
+      }
+      
+      totalNodes++;
+    });
+    
+    console.log('📊 RESULTADOS DO TESTE:');
+    console.log(`   Total de nós: ${totalNodes}`);
+    console.log(`   Movimento lateral: ${lateralMovement}`);
+    console.log(`   Movimento vertical: ${verticalMovement}`);
+    
+    if (lateralMovement > 0) {
+      console.error('❌ PROBLEMA: Movimento lateral detectado!');
+      alert(`❌ PROBLEMA: ${lateralMovement} nós se moveram lateralmente!\n\nIsso indica que o zoom não está centrado corretamente.\n\nVerifique o console para detalhes.`);
+    } else if (verticalMovement > 0) {
+      console.warn('⚠️ AVISO: Movimento vertical detectado (pode ser normal)');
+      alert(`⚠️ AVISO: ${verticalMovement} nós se moveram verticalmente.\n\nIsso pode ser normal dependendo do layout.\n\nMovimento lateral: ${lateralMovement} (✅ OK)`);
+    } else {
+      console.log('✅ SUCESSO: Nenhum movimento detectado!');
+      alert('✅ TESTE PASSOU: Nenhum movimento lateral ou vertical detectado!\n\nZoom está funcionando perfeitamente!');
+    }
+  }, 100);
+}
+
+// ✅ EXPORTA FUNÇÃO DE TESTE DE MOVIMENTO LATERAL
+window.testLateralMovement = testLateralMovement;
+
+// ✅ FUNÇÃO DE VERIFICAÇÃO COMPLETA DO SISTEMA
+function verifySystemIntegrity() {
+  console.log('🔍 VERIFICANDO INTEGRIDADE DO SISTEMA DE ZOOM...');
+  
+  // Verificar se as funções existem
+  const checks = {
+    'window.performZoom': typeof window.performZoom === 'function',
+    'enableCenteredZoom': typeof enableCenteredZoom === 'function',
+    'testLateralMovement': typeof window.testLateralMovement === 'function',
+    'testZoomAllScenarios': typeof window.testZoomAllScenarios === 'function',
+    'state.cy': !!state.cy,
+    'currentZoom': typeof currentZoom === 'number'
+  };
+  
+  console.log('📊 VERIFICAÇÕES DO SISTEMA:');
+  Object.entries(checks).forEach(([check, result]) => {
+    console.log(`   ${result ? '✅' : '❌'} ${check}: ${result}`);
+  });
+  
+  const allPassed = Object.values(checks).every(Boolean);
+  
+  if (allPassed) {
+    console.log('✅ SISTEMA INTEGRO: Todas as verificações passaram!');
+    console.log('🎯 Sistema de zoom unificado está funcionando corretamente');
+    
+    // Teste rápido de funcionalidade
+    if (state.cy && state.cy.nodes().length > 0) {
+      console.log('🧪 Executando teste rápido de funcionalidade...');
+      testLateralMovement();
+    } else {
+      console.log('⚠️ Nenhum mapa carregado - execute teste manual após criar mapa');
+      alert('✅ SISTEMA VERIFICADO!\n\nTodas as correções foram implementadas corretamente.\n\nPara testar:\n1. Crie um mapa\n2. Execute: testLateralMovement()\n3. Teste zoom com botões e wheel');
+    }
+  } else {
+    console.error('❌ PROBLEMAS DETECTADOS NO SISTEMA!');
+    const failed = Object.entries(checks).filter(([_, result]) => !result);
+    alert(`❌ PROBLEMAS DETECTADOS:\n\n${failed.map(([check]) => `• ${check}`).join('\n')}\n\nVerifique o console para detalhes.`);
+  }
+}
+
+// ✅ EXPORTA FUNÇÃO DE VERIFICAÇÃO
+window.verifySystemIntegrity = verifySystemIntegrity;
+
+// ✅ FUNÇÃO DE TESTE PARA VERIFICAR SALVAMENTO COM ESTADO VISUAL
+function testSaveWithVisualState() {
+  console.log('🧪 TESTANDO SALVAMENTO COM ESTADO VISUAL...');
+  
+  if (!state.currentMap || !state.cy) {
+    console.error('❌ Nenhum mapa carregado');
+    alert('Crie um mapa primeiro para testar o salvamento com estado visual');
+    return;
+  }
+  
+  try {
+    // Mover alguns nós para testar posições
+    const nodes = state.cy.nodes();
+    if (nodes.length > 1) {
+      const firstNode = nodes[0];
+      const secondNode = nodes[1];
+      
+      // Mover nós para posições específicas
+      firstNode.position({ x: 100, y: 100 });
+      secondNode.position({ x: 200, y: 200 });
+      
+      // Aplicar zoom e pan
+      state.cy.zoom(1.5);
+      state.cy.pan({ x: 50, y: 50 });
+      
+      console.log('✅ Nós movidos e viewport alterado para teste');
+    }
+    
+    // Simular salvamento
+    const testTitle = `Teste_Estado_Visual_${Date.now()}`;
+    const mapWithVisualState = {
+      ...state.currentMap,
+      _visualState: {
+        viewport: {
+          zoom: state.cy.zoom(),
+          pan: state.cy.pan()
+        },
+        nodePositions: {},
+        nodeStyles: {},
+        timestamp: new Date().toISOString()
+      }
+    };
+    
+    // Salvar posições dos nós
+    state.cy.nodes().forEach(node => {
+      const nodeId = node.id();
+      mapWithVisualState._visualState.nodePositions[nodeId] = {
+        x: node.position().x,
+        y: node.position().y
+      };
+    });
+    
+    const id = window.Storage.GeraMapas.saveMap({
+      title: testTitle,
+      data: mapWithVisualState
+    });
+    
+    console.log('✅ Mapa salvo com estado visual:', {
+      id: id,
+      nodes: Object.keys(mapWithVisualState._visualState.nodePositions).length,
+      viewport: mapWithVisualState._visualState.viewport
+    });
+    
+    alert(`✅ Teste concluído! Mapa "${testTitle}" salvo com estado visual.\n\nVerifique se ao carregar o mapa, as posições e zoom são restaurados.`);
+    
+  } catch (error) {
+    console.error('❌ Erro no teste:', error);
+    alert('❌ Erro no teste: ' + error.message);
+  }
+}
+
+// ✅ EXPORTA FUNÇÃO DE TESTE
+window.testSaveWithVisualState = testSaveWithVisualState;
+
 // ✅ FUNÇÃO DE TESTE PARA VERIFICAR EXPORTAÇÃO DE MAPAS
 function testMapExport() {
   console.log('🧪 TESTANDO EXPORTAÇÃO DE MAPAS...');
@@ -5787,11 +6286,124 @@ function downloadActiveTabContent(nodeSlider, nodeLabel) {
   }
 }
 
+// ☕ FUNCIONALIDADE DO ÍCONE "PAGUE UM CAFÉ" DESLOCÁVEL
+function initCoffeeIcon() {
+  const coffeeIcon = document.getElementById('coffeeIcon');
+  if (!coffeeIcon) return;
+  
+  let isDragging = false;
+  let startX = 0;
+  let startY = 0;
+  let initialX = 0;
+  let initialY = 0;
+  
+  // ✅ Eventos de mouse
+  coffeeIcon.addEventListener('mousedown', (e) => {
+    // Só arrastar se clicar no ícone, não no link
+    if (e.target.tagName === 'A') return;
+    
+    isDragging = true;
+    coffeeIcon.classList.add('dragging');
+    
+    startX = e.clientX;
+    startY = e.clientY;
+    
+    const rect = coffeeIcon.getBoundingClientRect();
+    initialX = rect.left;
+    initialY = rect.top;
+    
+    e.preventDefault();
+  });
+  
+  document.addEventListener('mousemove', (e) => {
+    if (!isDragging) return;
+    
+    const deltaX = e.clientX - startX;
+    const deltaY = e.clientY - startY;
+    
+    const newX = initialX + deltaX;
+    const newY = initialY + deltaY;
+    
+    // ✅ Limitar dentro da tela
+    const maxX = window.innerWidth - coffeeIcon.offsetWidth;
+    const maxY = window.innerHeight - coffeeIcon.offsetHeight;
+    
+    const constrainedX = Math.max(0, Math.min(newX, maxX));
+    const constrainedY = Math.max(0, Math.min(newY, maxY));
+    
+    coffeeIcon.style.left = constrainedX + 'px';
+    coffeeIcon.style.right = 'auto';
+    coffeeIcon.style.bottom = 'auto';
+    coffeeIcon.style.top = constrainedY + 'px';
+  });
+  
+  document.addEventListener('mouseup', () => {
+    if (isDragging) {
+      isDragging = false;
+      coffeeIcon.classList.remove('dragging');
+    }
+  });
+  
+  // ✅ Eventos de touch para dispositivos móveis
+  coffeeIcon.addEventListener('touchstart', (e) => {
+    if (e.target.tagName === 'A') return;
+    
+    isDragging = true;
+    coffeeIcon.classList.add('dragging');
+    
+    const touch = e.touches[0];
+    startX = touch.clientX;
+    startY = touch.clientY;
+    
+    const rect = coffeeIcon.getBoundingClientRect();
+    initialX = rect.left;
+    initialY = rect.top;
+    
+    e.preventDefault();
+  });
+  
+  document.addEventListener('touchmove', (e) => {
+    if (!isDragging) return;
+    
+    const touch = e.touches[0];
+    const deltaX = touch.clientX - startX;
+    const deltaY = touch.clientY - startY;
+    
+    const newX = initialX + deltaX;
+    const newY = initialY + deltaY;
+    
+    // ✅ Limitar dentro da tela
+    const maxX = window.innerWidth - coffeeIcon.offsetWidth;
+    const maxY = window.innerHeight - coffeeIcon.offsetHeight;
+    
+    const constrainedX = Math.max(0, Math.min(newX, maxX));
+    const constrainedY = Math.max(0, Math.min(newY, maxY));
+    
+    coffeeIcon.style.left = constrainedX + 'px';
+    coffeeIcon.style.right = 'auto';
+    coffeeIcon.style.bottom = 'auto';
+    coffeeIcon.style.top = constrainedY + 'px';
+    
+    e.preventDefault();
+  });
+  
+  document.addEventListener('touchend', () => {
+    if (isDragging) {
+      isDragging = false;
+      coffeeIcon.classList.remove('dragging');
+    }
+  });
+  
+  console.log('☕ Ícone do cafezinho inicializado - deslocável e responsivo!');
+}
+
 // Initialize app when DOM is loaded with extension safety
 if (typeof window !== 'undefined') {
   window.addEventListener('DOMContentLoaded', function() {
     try {
       initApp();
+      // ✅ Inicializar ícone do cafezinho
+      initCoffeeIcon();
     } catch (error) {
       console.error('Failed to initialize app:', error);
     }

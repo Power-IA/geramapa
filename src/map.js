@@ -44,7 +44,6 @@ window.MapEngine.initCy = function(container) {
           'min-width': '36px',
           'min-height': '36px',
           'text-max-width': '72px',
-          'text-max-height': '72px',
         }
       },
       { selector: 'node[depth = 0]',
@@ -57,7 +56,6 @@ window.MapEngine.initCy = function(container) {
           'min-width': '48px',
           'min-height': '48px',
           'text-max-width': '84px',
-          'text-max-height': '84px',
         }
       },
       { selector: 'node[img]',
@@ -83,8 +81,9 @@ window.MapEngine.initCy = function(container) {
       { selector: 'edge[branch = "2"]', style: { 'line-color': '#e67e22' } },
       { selector: 'edge[branch = "3"]', style: { 'line-color': '#9b59b6' } },
       { selector: 'edge[branch = "4"]', style: { 'line-color': '#34495e' } },
-    ],
-    wheelSensitivity: 0.1
+    ]
+    // ✅ CORREÇÃO: Remover wheelSensitivity customizada para evitar avisos
+    // wheelSensitivity: 0.1
   });
 };
 
@@ -431,33 +430,9 @@ window.MapEngine.renderMindMap = function(cy, mapJson, layoutModel = 'default', 
     window.LayoutAlgorithm.applyCollisionFreeLayout(cy, { iterations: 120, minGap: 40 });
     window.LayoutAlgorithm.routeEdgesSmart(cy);
     
-    // ===== ATIVAR AUTO-ORGANIZAÇÃO AUTOMÁTICA =====
-    // Sistema que funciona continuamente para manter nós organizados
-    // ✅ CORREÇÃO: Desabilitar auto-organização para nó único
-    const nodeCount = cy.nodes().length;
-    if (nodeCount > 1) {
-      window.LayoutAlgorithm.startAutoOrganization(cy, {
-        minGap: 50,           // Distância mínima MUITO aumentada para evitar aglomeração
-        damping: 0.6,         // Menos damping para movimento mais eficaz
-        stepMax: 20,          // Movimento máximo aumentado
-        forceStrength: 2.5,   // Força de repulsão MUITO aumentada
-        interval: 16,         // Intervalo menor para 60fps (mais responsivo)
-        enableHierarchy: true, // Respeitar hierarquia
-        enableRootAnchor: true // Manter nó raiz ancorado
-      });
-      
-      // Resolver clusters críticos imediatamente após layout
-      setTimeout(() => {
-        const clustersResolved = window.LayoutAlgorithm.resolveCriticalClusters(cy);
-        if (clustersResolved > 0) {
-          console.log(`🎯 ${clustersResolved} clusters críticos resolvidos após layout`);
-        }
-      }, 100);
-      
-      console.log('🧠 Sistema de auto-organização automática ATIVADO para múltiplos nós');
-    } else {
-      console.log('🔒 Auto-organização DESABILITADA para nó único (evita movimento indesejado)');
-    }
+    // ===== AUTO-ORGANIZAÇÃO DESABILITADA =====
+    // ✅ CORREÇÃO: Auto-organização completamente desabilitada conforme solicitado
+    console.log('🔒 Auto-organização DESABILITADA completamente - nós permanecem em posições fixas');
   } else {
     console.log('🔒 Layout pulado - preservando viewport');
   }

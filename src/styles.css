@@ -2624,15 +2624,35 @@
     border: none;
     font-size: 16px;
     cursor: pointer;
-    padding: 4px;
-    border-radius: 4px;
+    padding: 8px;
+    border-radius: 6px;
     transition: background 0.2s ease;
     color: var(--muted);
+    /* ✅ CORREÇÃO: Melhorar área de toque para móveis */
+    min-width: 48px;
+    min-height: 48px;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    /* ✅ CORREÇÃO: Garantir que seja clicável com PRIORIDADE MÁXIMA */
+    pointer-events: auto;
+    z-index: 999;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    /* ✅ CORREÇÃO: Isolar completamente do sistema de drag */
+    isolation: isolate;
   }
   
   .node-tooltip-close:hover {
     background: rgba(0,0,0,0.1);
     color: var(--text);
+  }
+  
+  /* ✅ CORREÇÃO: Feedback visual para touch em móveis */
+  .node-tooltip-close:active {
+    background: rgba(0,0,0,0.2);
+    transform: scale(0.95);
   }
   
   /* Conteúdo do popup */

@@ -306,6 +306,7 @@ window.LayoutAlgorithm.routeEdgesSmart = function(cy) {
 let autoOrganizationActive = false;
 let autoOrganizationInterval = null;
 let autoOrganizationConfig = {
+  enabled: false,       // ✅ CORREÇÃO: Desabilitar auto-organização completamente
   minGap: 50,           // Distância mínima MUITO aumentada entre nós
   damping: 0.6,         // Menos damping para movimento mais eficaz
   stepMax: 20,          // Movimento máximo aumentado
@@ -317,7 +318,8 @@ let autoOrganizationConfig = {
 
 // Função principal de auto-organização
 function performAutoOrganization(cy) {
-  if (!cy || cy.destroyed() || !autoOrganizationActive) return;
+  // ✅ CORREÇÃO: Verificar se auto-organização está habilitada
+  if (!cy || cy.destroyed() || !autoOrganizationActive || !autoOrganizationConfig.enabled) return;
   
   const nodes = cy.nodes();
   if (nodes.length < 2) return;
@@ -376,8 +378,8 @@ function performAutoOrganization(cy) {
     forceY *= config.damping;
     
     // Limitar movimento máximo
-    const moveX = Math.max(-config.stepMax, Math.min(config.stepMax, forceX));
-    const moveY = Math.max(-config.stepMax, Math.min(config.stepMax, forceY));
+    let moveX = Math.max(-config.stepMax, Math.min(config.stepMax, forceX));
+    let moveY = Math.max(-config.stepMax, Math.min(config.stepMax, forceY));
     
     // Respeitar hierarquia se habilitado
     if (config.enableHierarchy) {
@@ -423,6 +425,12 @@ function performAutoOrganization(cy) {
 
 // Iniciar sistema de auto-organização
 window.LayoutAlgorithm.startAutoOrganization = function(cy, customConfig = {}) {
+  // ✅ CORREÇÃO: Verificar se auto-organização está habilitada
+  if (!autoOrganizationConfig.enabled) {
+    console.log('🔒 Auto-organização DESABILITADA - não iniciando');
+    return;
+  }
+  
   if (autoOrganizationActive) {
     console.log('⚠️ Auto-organização já está ativa');
     return;

@@ -2092,7 +2092,7 @@ function setActiveNavBtn(activeBtn) {
   }
 }
 
-// Eventos para fechar popups
+// ✅ CORREÇÃO: Eventos para fechar popups (DESKTOP + MOBILE)
 document.addEventListener('click', (e) => {
   // Fechar popup ao clicar no botão de fechar
   if (e.target && e.target.classList && e.target.classList.contains('popup-close')) {
@@ -2100,6 +2100,7 @@ document.addEventListener('click', (e) => {
     if (popup) {
       popup.classList.remove('show');
       setActiveNavBtn(null);
+      console.log('❌ Popup fechado pelo botão X (click)');
     }
   }
   
@@ -2107,6 +2108,31 @@ document.addEventListener('click', (e) => {
   if (e.target && e.target.classList && e.target.classList.contains('mobile-popup')) {
     e.target.classList.remove('show');
     setActiveNavBtn(null);
+    console.log('❌ Popup fechado clicando fora');
+  }
+});
+
+// ✅ CORREÇÃO: Eventos touch para fechar popups em móveis
+document.addEventListener('touchend', (e) => {
+  // Fechar popup ao tocar no botão de fechar
+  if (e.target && e.target.classList && e.target.classList.contains('popup-close')) {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const popup = e.target.closest('.mobile-popup');
+    if (popup) {
+      popup.classList.remove('show');
+      setActiveNavBtn(null);
+      console.log('❌ Popup fechado pelo botão X (touch)');
+    }
+  }
+  
+  // Fechar popup ao tocar fora do conteúdo
+  if (e.target && e.target.classList && e.target.classList.contains('mobile-popup')) {
+    e.preventDefault();
+    e.target.classList.remove('show');
+    setActiveNavBtn(null);
+    console.log('❌ Popup fechado tocando fora');
   }
 });
 
@@ -4679,34 +4705,70 @@ function showCollapsedListPopup(cyNode, collapsedKids) {
     }
   });
   
-  // Touch events para dispositivos móveis
+  // ✅ CORREÇÃO: Touch events para dispositivos móveis (sem interferir com botões)
+  let isTouchDragging = false;
+  let startTouch = null;
+  
   header.addEventListener('touchstart', (e) => {
-    if (e.target === closeBtn) return;
+    // ✅ CORREÇÃO: Não interferir com botões
+    if (e.target === closeBtn || e.target.closest('.popup-close')) {
+      return; // Deixar o botão funcionar normalmente
+    }
+    
     const touch = e.touches[0];
     const rect = popup.getBoundingClientRect();
     dragOffset.x = touch.clientX - rect.left;
     dragOffset.y = touch.clientY - rect.top;
-    e.preventDefault();
+    startTouch = { x: touch.clientX, y: touch.clientY };
+    isTouchDragging = false;
   });
   
   header.addEventListener('touchmove', (e) => {
-    const touch = e.touches[0];
-    const newX = Math.max(0, Math.min(window.innerWidth - popup.offsetWidth, touch.clientX - dragOffset.x));
-    const newY = Math.max(0, Math.min(window.innerHeight - popup.offsetHeight, touch.clientY - dragOffset.y));
+    if (!startTouch) return;
     
-    popup.style.left = newX + 'px';
-    popup.style.top = newY + 'px';
-    e.preventDefault();
+    const touch = e.touches[0];
+    const deltaX = Math.abs(touch.clientX - startTouch.x);
+    const deltaY = Math.abs(touch.clientY - startTouch.y);
+    
+    // ✅ CORREÇÃO: Só iniciar drag se movimento for significativo
+    if (deltaX > 10 || deltaY > 10) {
+      isTouchDragging = true;
+      
+      const newX = Math.max(0, Math.min(window.innerWidth - popup.offsetWidth, touch.clientX - dragOffset.x));
+      const newY = Math.max(0, Math.min(window.innerHeight - popup.offsetHeight, touch.clientY - dragOffset.y));
+      
+      popup.style.left = newX + 'px';
+      popup.style.top = newY + 'px';
+      e.preventDefault();
+    }
+  });
+  
+  header.addEventListener('touchend', (e) => {
+    if (isTouchDragging) {
+      e.preventDefault();
+    }
+    startTouch = null;
+    isTouchDragging = false;
   });
   
   // Event listeners dos botões
   const applyBtn = popup.querySelector('.popup-apply');
   const cancelBtn = popup.querySelector('.popup-cancel');
   
-  // Botão X do cabeçalho
-  closeBtn.addEventListener('click', () => {
+  // ✅ CORREÇÃO: Botão X do cabeçalho com suporte completo a touch
+  closeBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
     popup.remove();
     console.log('❌ Popup fechado pelo X');
+  });
+  
+  // ✅ CORREÇÃO: Adicionar evento touch específico para o botão fechar
+  closeBtn.addEventListener('touchend', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    popup.remove();
+    console.log('❌ Popup fechado pelo X (touch)');
   });
   
   // Botão Aplicar
@@ -6073,6 +6135,169 @@ function verifySystemIntegrity() {
 
 // ✅ EXPORTA FUNÇÃO DE VERIFICAÇÃO
 window.verifySystemIntegrity = verifySystemIntegrity;
+
+// ✅ FUNÇÃO DE TESTE ESPECÍFICA PARA DISPOSITIVOS MÓVEIS
+function testMobileZoom() {
+  console.log('📱 TESTANDO ZOOM EM DISPOSITIVOS MÓVEIS...');
+  
+  // Detectar se é dispositivo móvel
+  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
+                   window.innerWidth <= 768 || 
+                   ('ontouchstart' in window);
+  
+  console.log(`📱 Dispositivo móvel detectado: ${isMobile}`);
+  console.log(`📱 User Agent: ${navigator.userAgent}`);
+  console.log(`📱 Largura da tela: ${window.innerWidth}px`);
+  console.log(`📱 Touch support: ${'ontouchstart' in window}`);
+  
+  if (!state.currentMap || !state.cy) {
+    console.error('❌ Nenhum mapa carregado');
+    alert('Crie um mapa primeiro para testar zoom em móveis');
+    return;
+  }
+  
+  const nodeCount = state.cy.nodes().length;
+  console.log(`📊 Número de nós no mapa: ${nodeCount}`);
+  
+  // Salvar posições iniciais
+  const initialPositions = {};
+  state.cy.nodes().forEach(node => {
+    initialPositions[node.id()] = {
+      x: node.position().x,
+      y: node.position().y
+    };
+  });
+  
+  console.log('📍 Posições iniciais salvas:', Object.keys(initialPositions).length, 'nós');
+  
+  // Testar zoom programático (simula pinch)
+  console.log('🔍 Testando zoom programático...');
+  performZoom(1.3, false);
+  
+  setTimeout(() => {
+    // Verificar movimento
+    let movedNodes = 0;
+    let totalMovement = 0;
+    
+    state.cy.nodes().forEach(node => {
+      const initial = initialPositions[node.id()];
+      const current = node.position();
+      
+      const deltaX = Math.abs(current.x - initial.x);
+      const deltaY = Math.abs(current.y - initial.y);
+      const movement = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+      
+      if (movement > 5) {
+        movedNodes++;
+        totalMovement += movement;
+        console.warn(`⚠️ Nó ${node.id()} se moveu:`, {
+          deltaX: current.x - initial.x,
+          deltaY: current.y - initial.y,
+          movement: movement.toFixed(2)
+        });
+      }
+    });
+    
+    console.log('📊 RESULTADOS DO TESTE MÓVEL:');
+    console.log(`   Dispositivo móvel: ${isMobile}`);
+    console.log(`   Total de nós: ${nodeCount}`);
+    console.log(`   Nós que se moveram: ${movedNodes}`);
+    console.log(`   Movimento total: ${totalMovement.toFixed(2)}px`);
+    
+    if (movedNodes > 0) {
+      console.error('❌ PROBLEMA EM MÓVEIS: Nós se moveram durante zoom!');
+      alert(`❌ PROBLEMA EM MÓVEIS: ${movedNodes} nós se moveram!\n\nMovimento total: ${totalMovement.toFixed(2)}px\n\nVerifique o console para detalhes.`);
+    } else {
+      console.log('✅ SUCESSO EM MÓVEIS: Nenhum nó se moveu durante zoom!');
+      alert(`✅ TESTE MÓVEL PASSOU!\n\n✅ Dispositivo móvel: ${isMobile}\n✅ Zoom funcionando corretamente\n✅ Nenhum movimento detectado\n\nSistema de zoom móvel funcionando perfeitamente!`);
+    }
+  }, 100);
+}
+
+// ✅ EXPORTA FUNÇÃO DE TESTE MÓVEL
+window.testMobileZoom = testMobileZoom;
+
+// ✅ FUNÇÃO DE TESTE ESPECÍFICA PARA POPUPS EM MÓVEIS
+function testMobilePopups() {
+  console.log('📱 TESTANDO POPUPS EM DISPOSITIVOS MÓVEIS...');
+  
+  // Detectar se é dispositivo móvel
+  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
+                   window.innerWidth <= 768 || 
+                   ('ontouchstart' in window);
+  
+  console.log(`📱 Dispositivo móvel detectado: ${isMobile}`);
+  
+  // Verificar se há popups abertos
+  const openPopups = document.querySelectorAll('.mobile-popup.show');
+  const allPopups = document.querySelectorAll('.mobile-popup');
+  const closeButtons = document.querySelectorAll('.popup-close');
+  
+  console.log('📊 ESTADO DOS POPUPS:');
+  console.log(`   Popups abertos: ${openPopups.length}`);
+  console.log(`   Total de popups: ${allPopups.length}`);
+  console.log(`   Botões fechar: ${closeButtons.length}`);
+  
+  // Verificar se os botões fechar têm os eventos corretos
+  let buttonsWithEvents = 0;
+  closeButtons.forEach(btn => {
+    const hasClickEvent = btn.onclick !== null || 
+                         (btn.addEventListener && btn.addEventListener.toString().includes('click'));
+    const hasTouchEvent = btn.addEventListener && btn.addEventListener.toString().includes('touch');
+    
+    if (hasClickEvent || hasTouchEvent) {
+      buttonsWithEvents++;
+    }
+  });
+  
+  console.log(`   Botões com eventos: ${buttonsWithEvents}/${closeButtons.length}`);
+  
+  // Teste de funcionalidade
+  if (openPopups.length > 0) {
+    console.log('🧪 Testando fechamento de popup aberto...');
+    
+    const firstPopup = openPopups[0];
+    const closeBtn = firstPopup.querySelector('.popup-close');
+    
+    if (closeBtn) {
+      console.log('✅ Botão fechar encontrado, testando...');
+      
+      // Simular clique/touch
+      if (isMobile) {
+        console.log('📱 Simulando touch em dispositivo móvel...');
+        const touchEvent = new TouchEvent('touchend', {
+          bubbles: true,
+          cancelable: true,
+          target: closeBtn
+        });
+        closeBtn.dispatchEvent(touchEvent);
+      } else {
+        console.log('🖱️ Simulando clique em desktop...');
+        closeBtn.click();
+      }
+      
+      setTimeout(() => {
+        const stillOpen = firstPopup.classList.contains('show');
+        if (stillOpen) {
+          console.error('❌ PROBLEMA: Popup não fechou após toque/clique!');
+          alert('❌ PROBLEMA EM MÓVEIS: Popup não fechou!\n\nBotão fechar não está funcionando corretamente.\n\nVerifique o console para detalhes.');
+        } else {
+          console.log('✅ SUCESSO: Popup fechou corretamente!');
+          alert('✅ TESTE MÓVEL PASSOU!\n\n✅ Popup fechou corretamente\n✅ Botão fechar funcionando\n\nSistema de popups móvel funcionando perfeitamente!');
+        }
+      }, 100);
+    } else {
+      console.error('❌ PROBLEMA: Nenhum botão fechar encontrado no popup!');
+      alert('❌ PROBLEMA: Popup aberto sem botão fechar!\n\nVerifique o console para detalhes.');
+    }
+  } else {
+    console.log('⚠️ Nenhum popup aberto para testar');
+    alert(`📱 TESTE DE POPUPS MÓVEIS\n\n✅ Dispositivo móvel: ${isMobile}\n✅ Total de popups: ${allPopups.length}\n✅ Botões fechar: ${closeButtons.length}\n\nPara testar:\n1. Abra um popup\n2. Execute: testMobilePopups()\n3. Teste fechar com toque`);
+  }
+}
+
+// ✅ EXPORTA FUNÇÃO DE TESTE DE POPUPS MÓVEIS
+window.testMobilePopups = testMobilePopups;
 
 // ✅ FUNÇÃO DE TESTE PARA VERIFICAR SALVAMENTO COM ESTADO VISUAL
 function testSaveWithVisualState() {

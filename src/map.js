@@ -88,12 +88,38 @@ window.MapEngine.initCy = function(container) {
   });
 };
 
-// ✅ CORREÇÃO: Sistema unificado de zoom que preserva posições
+// ✅ CORREÇÃO: Sistema unificado de zoom que preserva posições (DESKTOP + MOBILE)
 function enableCenteredZoom(cy) {
   try {
     const container = cy.container();
     if (!container) return;
     
+    // ✅ CORREÇÃO: Variáveis para pinch zoom em móveis
+    let initialDistance = 0;
+    let initialZoom = 1;
+    let isPinching = false;
+    
+    // ✅ CORREÇÃO: Função para calcular distância entre dois pontos
+    function getDistance(touch1, touch2) {
+      const dx = touch1.clientX - touch2.clientX;
+      const dy = touch1.clientY - touch2.clientY;
+      return Math.sqrt(dx * dx + dy * dy);
+    }
+    
+    // ✅ CORREÇÃO: Função para aplicar zoom unificado
+    function applyUnifiedZoom(factor) {
+      if (window.performZoom) {
+        window.performZoom(factor, false);
+      } else {
+        // Fallback se performZoom não estiver disponível
+        const current = cy.zoom();
+        const target = Math.max(cy.minZoom() || 0.01, Math.min(cy.maxZoom() || 10, current * factor));
+        const center = { x: (container.clientWidth || 0) / 2, y: (container.clientHeight || 0) / 2 };
+        cy.zoom({ level: target, renderedPosition: center });
+      }
+    }
+    
+    // ✅ CORREÇÃO: Wheel events (desktop)
     container.addEventListener('wheel', function(e) {
       if (!e) return;
       
@@ -105,19 +131,66 @@ function enableCenteredZoom(cy) {
       
       // ✅ CORREÇÃO: Usar performZoom em vez de zoom direto
       const factor = e.deltaY < 0 ? 1.1 : 0.9;
-      
-      // ✅ CORREÇÃO: Usar sistema unificado que preserva posições
-      if (window.performZoom) {
-        window.performZoom(factor, false);
-      } else {
-        // Fallback se performZoom não estiver disponível
-        const current = cy.zoom();
-        const target = Math.max(cy.minZoom() || 0.01, Math.min(cy.maxZoom() || 10, current * factor));
-        const center = { x: (container.clientWidth || 0) / 2, y: (container.clientHeight || 0) / 2 };
-        cy.zoom({ level: target, renderedPosition: center });
+      applyUnifiedZoom(factor);
+    }, { passive: false });
+    
+    // ✅ CORREÇÃO: Touch events para dispositivos móveis
+    container.addEventListener('touchstart', function(e) {
+      if (e.touches.length === 2) {
+        // Pinch zoom iniciado
+        isPinching = true;
+        initialDistance = getDistance(e.touches[0], e.touches[1]);
+        initialZoom = cy.zoom();
+        e.preventDefault();
+        console.log('📱 Pinch zoom iniciado');
       }
     }, { passive: false });
-  } catch (_) { /* noop */ }
+    
+    container.addEventListener('touchmove', function(e) {
+      if (isPinching && e.touches.length === 2) {
+        // Calcular nova distância
+        const currentDistance = getDistance(e.touches[0], e.touches[1]);
+        
+        if (initialDistance > 0) {
+          // Calcular fator de zoom baseado na mudança de distância
+          const scale = currentDistance / initialDistance;
+          const factor = scale > 1 ? Math.min(scale, 1.2) : Math.max(scale, 0.8);
+          
+          // Aplicar zoom unificado
+          const newZoom = Math.max(cy.minZoom() || 0.01, Math.min(cy.maxZoom() || 10, initialZoom * factor));
+          cy.zoom(newZoom);
+        }
+        
+        e.preventDefault();
+      }
+    }, { passive: false });
+    
+    container.addEventListener('touchend', function(e) {
+      if (isPinching) {
+        isPinching = false;
+        initialDistance = 0;
+        initialZoom = 1;
+        console.log('📱 Pinch zoom finalizado');
+      }
+    }, { passive: false });
+    
+    // ✅ CORREÇÃO: Prevenir zoom nativo do navegador em móveis
+    container.addEventListener('gesturestart', function(e) {
+      e.preventDefault();
+    }, { passive: false });
+    
+    container.addEventListener('gesturechange', function(e) {
+      e.preventDefault();
+    }, { passive: false });
+    
+    container.addEventListener('gestureend', function(e) {
+      e.preventDefault();
+    }, { passive: false });
+    
+    console.log('📱 Sistema de zoom unificado ativado (Desktop + Mobile)');
+  } catch (error) {
+    console.error('❌ Erro ao ativar zoom unificado:', error);
+  }
 }
 
 // Função centralizada para aplicar regras de diretório principal

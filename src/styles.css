@@ -25,6 +25,9 @@
     border-bottom: 1px solid var(--border);
     z-index: 100;
     box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    /* ✅ CORREÇÃO: Melhorar touch scrolling */
+    touch-action: pan-x pan-y;
+    -webkit-overflow-scrolling: touch;
   }
   
   .header-brand {
@@ -33,6 +36,10 @@
     gap: 8px;
     font-weight: 700;
     font-size: 18px;
+  }
+  
+  .brand-text {
+    transition: opacity 0.3s ease, transform 0.3s ease;
   }
   
   .brand-icon {
@@ -158,6 +165,45 @@
   .status-btn:hover {
     background: #f5f5f5;
     border-color: var(--accent);
+  }
+  
+  /* ✅ CORREÇÃO: Garantir visibilidade e responsividade dos botões de ação no mobile */
+  @media (max-width: 768px) {
+    .status-actions {
+      display: flex;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+    
+    .status-btn {
+      padding: 8px 12px;
+      font-size: 16px;
+      min-width: 44px;
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+    }
+    
+    .status-btn:active {
+      background: rgba(0,0,0,0.1);
+      transform: scale(0.95);
+    }
+  }
+  
+  @media (max-width: 480px) {
+    .status-actions {
+      gap: 4px;
+    }
+    
+    .status-btn {
+      padding: 6px 10px;
+      font-size: 14px;
+      min-width: 40px;
+      min-height: 40px;
+    }
   }
   
   /* ========================================
@@ -1290,15 +1336,39 @@
     
     .header-brand {
       font-size: 16px;
+      transition: all 0.3s ease;
+    }
+    
+    /* ✅ CORREÇÃO: Texto "GeraMapa" SEMPRE oculto no mobile para otimizar espaço */
+    .brand-text {
+      opacity: 0;
+      transform: translateX(-10px);
+      pointer-events: none;
     }
     
     .header-nav {
       gap: 2px;
+      transition: gap 0.3s ease;
+      overflow-x: auto;
+      overflow-y: hidden;
+      scrollbar-width: none; /* Firefox */
+      -ms-overflow-style: none; /* IE/Edge */
+      padding-bottom: 4px;
+      flex-shrink: 0;
+    }
+    
+    /* ✅ CORREÇÃO: Ocultar scrollbar mas manter funcionalidade */
+    .header-nav::-webkit-scrollbar {
+      display: none; /* Chrome/Safari */
     }
     
     .nav-btn {
       min-width: 40px;
       padding: 4px 6px;
+      transition: all 0.3s ease;
+      flex-shrink: 0;
+      margin: 0;
+      border: 1px solid var(--border);
     }
     
     .nav-icon {
@@ -1307,6 +1377,27 @@
     
     .nav-text {
       font-size: 8px;
+    }
+    
+    /* ✅ CORREÇÃO: Menu expandido quando há mapa ativo (ocupa espaço do texto) */
+    .app-header.has-map .header-brand {
+      gap: 4px; /* Reduzir espaço do brand */
+    }
+    
+    .app-header.has-map .header-nav {
+      gap: 4px;
+      overflow-x: auto;
+      overflow-y: hidden;
+    }
+    
+    .app-header.has-map .nav-btn {
+      min-width: 50px;
+      padding: 6px 10px;
+      flex-shrink: 0;
+    }
+    
+    .app-header.has-map .nav-text {
+      font-size: 9px;
     }
     
     .app-status {
@@ -1361,10 +1452,38 @@
     .header-nav {
       overflow-x: auto;
       padding-bottom: 4px;
+      scrollbar-width: none; /* Firefox */
+      -ms-overflow-style: none; /* IE/Edge */
+      gap: 1px;
+    }
+    
+    .header-nav::-webkit-scrollbar {
+      display: none; /* Chrome/Safari */
     }
     
     .nav-btn {
       flex-shrink: 0;
+      min-width: 35px;
+      padding: 3px 5px;
+      margin: 0;
+    }
+    
+    .nav-text {
+      font-size: 7px;
+    }
+    
+    /* ✅ CORREÇÃO: Menu expandido em telas pequenas */
+    .app-header.has-map .header-nav {
+      gap: 2px;
+    }
+    
+    .app-header.has-map .nav-btn {
+      min-width: 45px;
+      padding: 5px 8px;
+    }
+    
+    .app-header.has-map .nav-text {
+      font-size: 8px;
     }
     
     .models-grid {
@@ -3909,30 +4028,30 @@
   transition: opacity 0.2s ease;
 }
 
-/* Botão de marcador */
-.marker-btn.active {
+/* ✅ CORREÇÃO: Botão de marcador - usar seletor específico para nav-btn */
+.nav-btn.marker-btn.active {
   background-color: #ff6b35 !important;
   color: white !important;
   transform: scale(1.05);
   box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
 }
 
-.marker-btn:not(.active) {
+.nav-btn.marker-btn:not(.active) {
   background-color: #f5f5f5 !important;
   color: #333 !important;
   transform: scale(1);
   box-shadow: none;
 }
 
-/* Botão de lápis */
-.lapis-btn.active {
+/* ✅ CORREÇÃO: Botão de lápis - usar seletor específico para nav-btn */
+.nav-btn.lapis-btn.active {
   background-color: #2c3e50 !important;
   color: white !important;
   transform: scale(1.05);
   box-shadow: 0 4px 12px rgba(44, 62, 80, 0.3);
 }
 
-.lapis-btn:not(.active) {
+.nav-btn.lapis-btn:not(.active) {
   background-color: #f5f5f5 !important;
   color: #333 !important;
   transform: scale(1);

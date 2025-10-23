@@ -189,6 +189,8 @@ const settingsBtn = document.getElementById('settingsBtn');
 const exportBtn = document.getElementById('exportBtn');
 const specialistBtn = document.getElementById('specialistBtn');
 const mapModelsBtn = document.getElementById('mapModelsBtn');
+const markerBtn = document.getElementById('markerBtn');
+const lapisBtn = document.getElementById('lapisBtn');
 
 // Popups
 const chatPopup = document.getElementById('chatPopup');
@@ -1252,6 +1254,9 @@ async function handleFloatingChatSend() {
     deleteMapBtn.disabled = false;
     state.currentMapId = null;
     modelSelector.classList.add('open');
+    
+    // ✅ CORREÇÃO: Atualizar estado do menu mobile
+    updateMobileMenuState();
       
       // Mostrar chat especialista automaticamente
       showSpecialistChat();
@@ -1260,7 +1265,7 @@ async function handleFloatingChatSend() {
       toggleSpecialistButton();
       
       // Mostrar botão de modelos de mapas
-      toggleMapModelsButton();
+      updateMobileMenuState();
       
       // Remover mensagem de loading e adicionar sucesso
       const messages = floatingChatLog.querySelectorAll('.fmsg');
@@ -1749,6 +1754,9 @@ deleteMapBtn.addEventListener('click', () => {
   modelSelector.classList.remove('open');
   floatingChat.style.display = 'none';
   
+  // ✅ CORREÇÃO: Atualizar estado do menu mobile
+  updateMobileMenuState();
+  
   // ========================================
   // FECHAMENTO AUTOMÁTICO DO POPUP DE EXPANSÃO
   // ========================================
@@ -1792,7 +1800,7 @@ deleteMapBtn.addEventListener('click', () => {
   toggleSpecialistButton();
   
   // Esconder botão de modelos de mapas
-  toggleMapModelsButton();
+  updateMobileMenuState();
 });
 
 savedMapsList.addEventListener('click', (ev) => {
@@ -1820,7 +1828,7 @@ savedMapsList.addEventListener('click', (ev) => {
       toggleSpecialistButton();
       
       // Mostrar botão de modelos de mapas
-      toggleMapModelsButton();
+      updateMobileMenuState();
     }
   } else if (action === 'add') {
     const item = window.Storage.GeraMapas.getMap(id);
@@ -1918,6 +1926,9 @@ async function renderAndAttach(map, preserveViewport = false) {
   // Renderizar mapa SEM aplicar layout quando preservando viewport
   window.MapEngine.renderMindMap(state.cy, map, state.currentModel, preserveViewport);
   
+  // ✅ CORREÇÃO: Atualizar estado do menu mobile
+  updateMobileMenuState();
+  
   // ✅ RESTAURAR ESTADO VISUAL SALVO (se existir)
   if (hasVisualState && state.cy) {
     // Restaurar posições dos nós salvos
@@ -1977,7 +1988,7 @@ async function renderAndAttach(map, preserveViewport = false) {
   wireCollapseExpandEvents();
   
   // Atualizar visibilidade do botão de modelos de mapas
-  toggleMapModelsButton(); // attach interactive collapse/expand
+  updateMobileMenuState(); // attach interactive collapse/expand
 }
 
 async function updateModelsUI() {
@@ -2348,16 +2359,6 @@ function hideTooltip() {
   }
 }
 
-// Função para controlar visibilidade do botão de modelos de mapas
-function toggleMapModelsButton() {
-  if (state.currentMap) {
-    mapModelsBtn.style.display = 'flex';
-    console.log('✅ Botão modelos de mapas: VISÍVEL (mapa carregado)');
-  } else {
-    mapModelsBtn.style.display = 'none';
-    console.log('❌ Botão modelos de mapas: OCULTO (nenhum mapa)');
-  }
-}
 
 // Event listener para o botão de modelos de mapas
 if (mapModelsBtn) {
@@ -2612,26 +2613,79 @@ function buildNodeInfoIcons(mapJson) {
     });
   });
 
-  // update positions on viewport changes
+  // ✅ OTIMIZAÇÃO: update positions on viewport changes com performance melhorada
   /* batch updates via rAF to avoid visual lag and cover more cytoscape events */
   let _overlayUpdateRAF = null;
+  let _lastUpdateTime = 0;
+  const UPDATE_THROTTLE_MS = 16; // ~60fps
+  
   function scheduleOverlayUpdate() {
     if (_overlayUpdateRAF) return;
+    
+    const now = performance.now();
+    if (now - _lastUpdateTime < UPDATE_THROTTLE_MS) {
+      return; // Throttle para evitar updates excessivos
+    }
+    
     _overlayUpdateRAF = requestAnimationFrame(() => {
       _overlayUpdateRAF = null;
-      state.cy.nodes().forEach(n => {
-        const nodeEl = overlaysRoot.querySelector(`.node-info[data-node-id="${n.id()}"]`);
-        if (nodeEl) positionOverlay(nodeEl, n.renderedPosition());
+      _lastUpdateTime = performance.now();
+      
+      // ✅ OTIMIZAÇÃO: Cache dos elementos DOM para evitar querySelector repetido
+      const overlayElements = overlaysRoot.querySelectorAll('.node-info');
+      const overlayMap = new Map();
+      
+      overlayElements.forEach(el => {
+        const nodeId = el.getAttribute('data-node-id');
+        if (nodeId) overlayMap.set(nodeId, el);
       });
+      
+      // ✅ OTIMIZAÇÃO: Processar apenas nós visíveis e com overlays
+      const visibleNodes = state.cy.nodes(':visible');
+      let processedCount = 0;
+      const MAX_NODES_PER_FRAME = 20; // Limitar processamento por frame
+      
+      for (const node of visibleNodes) {
+        if (processedCount >= MAX_NODES_PER_FRAME) {
+          // Se há muitos nós, agendar próximo frame
+          scheduleOverlayUpdate();
+          break;
+        }
+        
+        const nodeId = node.id();
+        const nodeEl = overlayMap.get(nodeId);
+        if (nodeEl) {
+          const pos = node.renderedPosition();
+          // ✅ OTIMIZAÇÃO: Aplicar posição diretamente sem função extra
+          nodeEl.style.left = (pos.x + 24) + 'px';
+          nodeEl.style.top = (pos.y - 12) + 'px';
+          processedCount++;
+        }
+      }
     });
   }
   ['pan','zoom','resize','position','drag','render'].forEach(evt => state.cy.on(evt, scheduleOverlayUpdate));
 }
 
-function positionOverlay(el, pos) {
-  // offset top-right of node
-  el.style.left = (pos.x + 24) + 'px';
-  el.style.top = (pos.y - 12) + 'px';
+// ✅ FUNÇÃO DE THROTTLING GENÉRICA PARA PERFORMANCE
+function createThrottledHandler(handler, delay = 16) {
+  let lastCall = 0;
+  let timeoutId = null;
+  
+  return function(...args) {
+    const now = performance.now();
+    
+    if (now - lastCall >= delay) {
+      lastCall = now;
+      handler.apply(this, args);
+    } else if (!timeoutId) {
+      timeoutId = setTimeout(() => {
+        timeoutId = null;
+        lastCall = performance.now();
+        handler.apply(this, args);
+      }, delay - (now - lastCall));
+    }
+  };
 }
 
 /* show tooltip and request node-specific summary from model */
@@ -5520,7 +5574,7 @@ document.addEventListener('keydown', (e) => {
 if (state.cy) {
   let isInternalZoom = false; // Flag para evitar loops
   
-  state.cy.on('zoom', () => {
+  state.cy.on('zoom', createThrottledHandler(() => {
     if (isInternalZoom) return; // Evitar sincronização durante zoom interno
     
     const cyZoom = state.cy.zoom();
@@ -5528,7 +5582,7 @@ if (state.cy) {
       currentZoom = cyZoom;
       updateZoomDisplay();
     }
-  });
+  }, 16)); // Throttle para 60fps
   
   // ✅ CORREÇÃO: Marcar zoom interno para evitar conflitos
   const originalPerformZoom = window.performZoom;
@@ -7140,46 +7194,181 @@ function initCoffeeIcon() {
   console.log('☕ Ícone do cafezinho inicializado - deslocável e responsivo!');
 }
 
-// ✅ CORREÇÃO: Teste específico para popup de informação móvel
-window.testNodeTooltipMobileFix = function() {
-  console.log('🧪 TESTE: Verificando correção do popup de informação móvel...');
-  
-  // Verificar se existe um popup ativo
-  const activeTooltip = document.querySelector('.node-tooltip');
-  if (!activeTooltip) {
-    console.log('❌ Nenhum popup de informação ativo encontrado');
-    console.log('💡 Dica: Clique em um ícone "i" de um nó primeiro');
-    return;
+  // ✅ CORREÇÃO: Teste específico para popup de informação móvel
+  window.testNodeTooltipMobileFix = function() {
+    console.log('🧪 TESTE: Verificando correção do popup de informação móvel...');
+    
+    // Verificar se existe um popup ativo
+    const activeTooltip = document.querySelector('.node-tooltip');
+    if (!activeTooltip) {
+      console.log('❌ Nenhum popup de informação ativo encontrado');
+      console.log('💡 Dica: Clique em um ícone "i" de um nó primeiro');
+      return;
+    }
+    
+    // Verificar se o botão fechar existe
+    const closeBtn = activeTooltip.querySelector('.node-tooltip-close');
+    if (!closeBtn) {
+      console.log('❌ Botão fechar não encontrado no popup');
+      return;
+    }
+    
+    console.log('✅ Botão fechar encontrado:', closeBtn);
+    
+    // Verificar CSS
+    const computedStyle = window.getComputedStyle(closeBtn);
+    console.log('✅ Z-index:', computedStyle.zIndex);
+    console.log('✅ Pointer-events:', computedStyle.pointerEvents);
+    console.log('✅ Touch-action:', computedStyle.touchAction);
+    console.log('✅ Isolation:', computedStyle.isolation);
+    
+    // Verificar se o sistema de drag está configurado corretamente
+    const header = activeTooltip.querySelector('.node-tooltip-header');
+    if (header) {
+      console.log('✅ Header encontrado para drag:', header);
+      console.log('✅ Sistema de drag configurado com verificação de botão fechar');
+    }
+    
+    console.log('🎯 TESTE CONCLUÍDO: Verifique se consegue fechar o popup tocando no X');
+    console.log('📱 Teste em dispositivo móvel: toque no X e veja se fecha');
+    console.log('🖱️ Teste em desktop: clique no X e veja se fecha');
+    console.log('🔍 Logs detalhados serão exibidos no console durante o teste');
+  };
+
+  // ✅ CORREÇÃO: Controlar expansão do menu no mobile baseado em mapa ativo
+  function updateMobileMenuState() {
+    const header = document.querySelector('.app-header');
+    
+    if (!header) return;
+    
+    // Verificar se há um mapa ativo
+    const hasActiveMap = state.currentMap && state.currentMap.nodes && state.currentMap.nodes.length > 0;
+    
+    if (hasActiveMap) {
+      header.classList.add('has-map');
+      console.log('📱 Menu EXPANDIDO - mapa ativo detectado');
+      
+      // ✅ CORREÇÃO: Garantir que botões específicos sejam visíveis
+      if (mapModelsBtn) mapModelsBtn.style.display = 'flex';
+      if (markerBtn) markerBtn.style.display = 'flex';
+      if (lapisBtn) lapisBtn.style.display = 'flex';
+      
+      console.log('✅ Botões específicos: modelos, marcador e lápis VISÍVEIS');
+    } else {
+      header.classList.remove('has-map');
+      console.log('📱 Menu COMPACTO - nenhum mapa ativo');
+      
+      // ✅ CORREÇÃO: Ocultar botões específicos quando não há mapa
+      if (mapModelsBtn) mapModelsBtn.style.display = 'none';
+      if (markerBtn) markerBtn.style.display = 'none';
+      if (lapisBtn) lapisBtn.style.display = 'none';
+      
+      console.log('❌ Botões específicos: modelos, marcador e lápis OCULTOS');
+    }
   }
-  
-  // Verificar se o botão fechar existe
-  const closeBtn = activeTooltip.querySelector('.node-tooltip-close');
-  if (!closeBtn) {
-    console.log('❌ Botão fechar não encontrado no popup');
-    return;
-  }
-  
-  console.log('✅ Botão fechar encontrado:', closeBtn);
-  
-  // Verificar CSS
-  const computedStyle = window.getComputedStyle(closeBtn);
-  console.log('✅ Z-index:', computedStyle.zIndex);
-  console.log('✅ Pointer-events:', computedStyle.pointerEvents);
-  console.log('✅ Touch-action:', computedStyle.touchAction);
-  console.log('✅ Isolation:', computedStyle.isolation);
-  
-  // Verificar se o sistema de drag está configurado corretamente
-  const header = activeTooltip.querySelector('.node-tooltip-header');
-  if (header) {
-    console.log('✅ Header encontrado para drag:', header);
-    console.log('✅ Sistema de drag configurado com verificação de botão fechar');
-  }
-  
-  console.log('🎯 TESTE CONCLUÍDO: Verifique se consegue fechar o popup tocando no X');
-  console.log('📱 Teste em dispositivo móvel: toque no X e veja se fecha');
-  console.log('🖱️ Teste em desktop: clique no X e veja se fecha');
-  console.log('🔍 Logs detalhados serão exibidos no console durante o teste');
-};
+
+  // ✅ FUNÇÃO DE DEBUG ESPECÍFICA PARA INVESTIGAR PROBLEMA MOBILE
+  window.debugMobileIcons = function() {
+    console.log('🔍 === DEBUG MOBILE ICONS - INVESTIGAÇÃO SISTEMÁTICA ===');
+    
+    // 1. Verificar se os elementos existem
+    console.log('1️⃣ VERIFICAÇÃO DE ELEMENTOS:');
+    console.log('mapModelsBtn:', mapModelsBtn ? '✅ Existe' : '❌ Não existe');
+    console.log('markerBtn:', markerBtn ? '✅ Existe' : '❌ Não existe');
+    console.log('lapisBtn:', lapisBtn ? '✅ Existe' : '❌ Não existe');
+    
+    // 2. Verificar estado atual dos botões
+    console.log('2️⃣ ESTADO ATUAL DOS BOTÕES:');
+    if (mapModelsBtn) {
+      console.log('mapModelsBtn.style.display:', mapModelsBtn.style.display);
+      console.log('mapModelsBtn.offsetWidth:', mapModelsBtn.offsetWidth);
+      console.log('mapModelsBtn.offsetHeight:', mapModelsBtn.offsetHeight);
+    }
+    if (markerBtn) {
+      console.log('markerBtn.style.display:', markerBtn.style.display);
+      console.log('markerBtn.offsetWidth:', markerBtn.offsetWidth);
+      console.log('markerBtn.offsetHeight:', markerBtn.offsetHeight);
+    }
+    if (lapisBtn) {
+      console.log('lapisBtn.style.display:', lapisBtn.style.display);
+      console.log('lapisBtn.offsetWidth:', lapisBtn.offsetWidth);
+      console.log('lapisBtn.offsetHeight:', lapisBtn.offsetHeight);
+    }
+    
+    // 3. Verificar estado do mapa
+    console.log('3️⃣ ESTADO DO MAPA:');
+    console.log('state.currentMap:', state.currentMap ? '✅ Existe' : '❌ Não existe');
+    if (state.currentMap) {
+      console.log('state.currentMap.nodes:', state.currentMap.nodes ? '✅ Existe' : '❌ Não existe');
+      console.log('state.currentMap.nodes.length:', state.currentMap.nodes ? state.currentMap.nodes.length : 'N/A');
+    }
+    
+    // 4. Verificar CSS computado
+    console.log('4️⃣ CSS COMPUTADO:');
+    if (mapModelsBtn) {
+      const computedStyle = window.getComputedStyle(mapModelsBtn);
+      console.log('mapModelsBtn computed display:', computedStyle.display);
+      console.log('mapModelsBtn computed visibility:', computedStyle.visibility);
+      console.log('mapModelsBtn computed opacity:', computedStyle.opacity);
+    }
+    
+    // 5. Verificar header-nav
+    console.log('5️⃣ HEADER NAV:');
+    const headerNav = document.querySelector('.header-nav');
+    if (headerNav) {
+      console.log('headerNav.offsetWidth:', headerNav.offsetWidth);
+      console.log('headerNav.scrollWidth:', headerNav.scrollWidth);
+      console.log('headerNav.overflow-x:', window.getComputedStyle(headerNav).overflowX);
+    }
+    
+    // 6. Verificar se é mobile
+    console.log('6️⃣ DETECÇÃO MOBILE:');
+    const isMobile = window.innerWidth <= 768;
+    console.log('window.innerWidth:', window.innerWidth);
+    console.log('É mobile:', isMobile ? '✅ Sim' : '❌ Não');
+    
+    // 7. Verificar classe has-map
+    console.log('7️⃣ CLASSE HAS-MAP:');
+    const header = document.querySelector('.app-header');
+    if (header) {
+      console.log('header.classList.contains("has-map"):', header.classList.contains('has-map'));
+    }
+    
+    console.log('🔍 === FIM DA INVESTIGAÇÃO ===');
+  };
+
+  // ✅ FUNÇÃO DE TESTE PARA VALIDAR updateMobileMenuState()
+  window.testUpdateMobileMenuState = function() {
+    console.log('🧪 === TESTE updateMobileMenuState() ===');
+    
+    // Simular estado sem mapa
+    console.log('1️⃣ TESTE SEM MAPA:');
+    state.currentMap = null;
+    updateMobileMenuState();
+    
+    // Verificar resultado
+    setTimeout(() => {
+      console.log('Resultado sem mapa:');
+      console.log('mapModelsBtn.style.display:', mapModelsBtn ? mapModelsBtn.style.display : 'N/A');
+      console.log('markerBtn.style.display:', markerBtn ? markerBtn.style.display : 'N/A');
+      console.log('lapisBtn.style.display:', lapisBtn ? lapisBtn.style.display : 'N/A');
+      
+      // Simular estado com mapa
+      console.log('2️⃣ TESTE COM MAPA:');
+      state.currentMap = { nodes: [{ id: 'test' }] };
+      updateMobileMenuState();
+      
+      // Verificar resultado
+      setTimeout(() => {
+        console.log('Resultado com mapa:');
+        console.log('mapModelsBtn.style.display:', mapModelsBtn ? mapModelsBtn.style.display : 'N/A');
+        console.log('markerBtn.style.display:', markerBtn ? markerBtn.style.display : 'N/A');
+        console.log('lapisBtn.style.display:', lapisBtn ? lapisBtn.style.display : 'N/A');
+        
+        console.log('🧪 === FIM DO TESTE ===');
+      }, 100);
+    }, 100);
+  };
 
 // Initialize app when DOM is loaded with extension safety
 if (typeof window !== 'undefined') {
@@ -7188,6 +7377,8 @@ if (typeof window !== 'undefined') {
       initApp();
       // ✅ Inicializar ícone do cafezinho
       initCoffeeIcon();
+      // ✅ CORREÇÃO: Atualizar estado do menu mobile
+      updateMobileMenuState();
     } catch (error) {
       console.error('Failed to initialize app:', error);
     }

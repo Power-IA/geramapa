@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Fundo verde -->
+  <rect width="512" height="512" fill="#4CAF50"/>
+  
+  <!-- Círculo branco (cérebro estilizado) -->
+  <circle cx="256" cy="200" r="120" fill="white" opacity="0.9"/>
+  
+  <!-- Conexões (linhas) -->
+  <path d="M 256 200 L 150 350" stroke="white" stroke-width="8" opacity="0.7"/>
+  <path d="M 256 200 L 362 350" stroke="white" stroke-width="8" opacity="0.7"/>
+  <path d="M 256 200 L 256 380" stroke="white" stroke-width="8" opacity="0.7"/>
+  
+  <!-- Nós (círculos menores) -->
+  <circle cx="150" cy="350" r="30" fill="white"/>
+  <circle cx="256" cy="380" r="30" fill="white"/>
+  <circle cx="362" cy="350" r="30" fill="white"/>
+  
+  <!-- Texto GM -->
+  <text x="256" y="440" font-family="Arial, sans-serif" font-size="60" font-weight="bold" fill="white" text-anchor="middle">GM</text>
+</svg>
+

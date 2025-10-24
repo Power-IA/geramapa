@@ -3,7 +3,28 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"/>
-  <title>Gerador de Mapas Mentais por IA</title>
+  <title>GeraMapa - Mapas Mentais com IA</title>
+  <meta name="description" content="Gerador de Mapas Mentais com Inteligência Artificial. Crie mapas mentais complexos usando IA de forma rápida e interativa.">
+  <meta name="keywords" content="mapas mentais, IA, inteligência artificial, mindmap, gerador, criatividade">
+  <meta name="author" content="GeraMapa">
+  
+  <!-- PWA Meta Tags -->
+  <meta name="theme-color" content="#4CAF50">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="GeraMapa">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="application-name" content="GeraMapa">
+  
+  <!-- PWA Manifest -->
+  <link rel="manifest" href="/geramapa/manifest.json">
+  
+  <!-- Ícones para iOS e outros -->
+  <link rel="apple-touch-icon" sizes="192x192" href="/geramapa/icons/icon-192x192.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="/geramapa/icons/icon-192x192.png">
+  <link rel="icon" type="image/png" sizes="512x512" href="/geramapa/icons/icon-512x512.png">
+  <link rel="shortcut icon" href="/geramapa/icons/icon-192x192.png">
+  
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <!-- Noto Sans and Space Mono -->
@@ -377,5 +398,140 @@
   </div>
 
   <script src="./app.js"></script>
+  
+  <!-- PWA Service Worker Registration -->
+  <script>
+    // Registrar Service Worker para PWA
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/geramapa/service-worker.js', {
+          scope: '/geramapa/'
+        })
+        .then((registration) => {
+          console.log('✅ Service Worker registrado com sucesso:', registration.scope);
+          
+          // Verificar atualizações a cada 60 segundos
+          setInterval(() => {
+            registration.update();
+          }, 60000);
+          
+          // Listener para novas versões
+          registration.addEventListener('updatefound', () => {
+            const newWorker = registration.installing;
+            newWorker.addEventListener('statechange', () => {
+              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                // Nova versão disponível
+                console.log('🔄 Nova versão do app disponível! Recarregue a página.');
+                
+                // Opcional: Mostrar notificação ao usuário
+                if (confirm('Nova versão disponível! Deseja atualizar?')) {
+                  window.location.reload();
+                }
+              }
+            });
+          });
+        })
+        .catch((error) => {
+          console.error('❌ Erro ao registrar Service Worker:', error);
+        });
+      });
+    } else {
+      console.warn('⚠️ Service Workers não são suportados neste navegador');
+    }
+
+    // PWA Install Prompt
+    let deferredPrompt;
+    let installButton = null;
+
+    window.addEventListener('beforeinstallprompt', (e) => {
+      console.log('💾 PWA pode ser instalado!');
+      
+      // Prevenir o prompt automático
+      e.preventDefault();
+      deferredPrompt = e;
+      
+      // Criar botão de instalação (opcional)
+      if (!installButton) {
+        installButton = document.createElement('button');
+        installButton.textContent = '📲 Instalar App';
+        installButton.style.cssText = `
+          position: fixed;
+          bottom: 80px;
+          right: 20px;
+          padding: 12px 24px;
+          background: #4CAF50;
+          color: white;
+          border: none;
+          border-radius: 8px;
+          font-size: 16px;
+          font-weight: bold;
+          cursor: pointer;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+          z-index: 10000;
+          transition: all 0.3s ease;
+        `;
+        
+        installButton.addEventListener('mouseenter', () => {
+          installButton.style.transform = 'scale(1.05)';
+          installButton.style.boxShadow = '0 6px 16px rgba(0,0,0,0.3)';
+        });
+        
+        installButton.addEventListener('mouseleave', () => {
+          installButton.style.transform = 'scale(1)';
+          installButton.style.boxShadow = '0 4px 12px rgba(0,0,0,0.2)';
+        });
+        
+        installButton.addEventListener('click', async () => {
+          if (!deferredPrompt) return;
+          
+          // Mostrar prompt de instalação
+          deferredPrompt.prompt();
+          
+          // Aguardar escolha do usuário
+          const { outcome } = await deferredPrompt.userChoice;
+          console.log(`Escolha do usuário: ${outcome}`);
+          
+          if (outcome === 'accepted') {
+            console.log('✅ PWA instalado com sucesso!');
+          } else {
+            console.log('❌ Instalação cancelada pelo usuário');
+          }
+          
+          // Limpar prompt
+          deferredPrompt = null;
+          installButton.remove();
+          installButton = null;
+        });
+        
+        // Adicionar botão à página após 3 segundos
+        setTimeout(() => {
+          document.body.appendChild(installButton);
+        }, 3000);
+      }
+    });
+
+    // Listener para quando app for instalado
+    window.addEventListener('appinstalled', () => {
+      console.log('✅ GeraMapa instalado como PWA!');
+      
+      // Remover botão de instalação se existir
+      if (installButton) {
+        installButton.remove();
+        installButton = null;
+      }
+      
+      deferredPrompt = null;
+      
+      // Opcional: Enviar analytics
+      // gtag('event', 'pwa_installed');
+    });
+
+    // Verificar se está rodando como PWA
+    if (window.matchMedia('(display-mode: standalone)').matches || 
+        window.navigator.standalone === true) {
+      console.log('🚀 Rodando como PWA instalado!');
+      document.documentElement.classList.add('pwa-mode');
+    }
+  </script>
 </body>
 </html>

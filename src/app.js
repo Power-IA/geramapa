@@ -5782,25 +5782,23 @@ function closeWhatsInvitePopup() {
 function initWhatsInvitePopup() {
   const btn = document.getElementById('whatsInviteBtn');
   const closeBtn = document.getElementById('whatsInviteClose');
-  const overlay = document.querySelector('.wi-overlay');
   
+  // Botão "Entrar no Grupo" - abre link e fecha popup
   if (btn) {
     btn.addEventListener('click', () => {
       closeWhatsInvitePopup();
     }, { passive: true });
   }
   
+  // Botão "Agora não" - fecha popup
   if (closeBtn) {
     closeBtn.addEventListener('click', () => {
       closeWhatsInvitePopup();
     });
   }
   
-  if (overlay) {
-    overlay.addEventListener('click', () => {
-      closeWhatsInvitePopup();
-    });
-  }
+  // Popup fica ativo até: clicar nos botões OU aguardar 2 minutos
+  // NÃO fecha ao clicar no overlay (fundo escuro)
   
   setTimeout(openWhatsInvitePopup, 300);
 }

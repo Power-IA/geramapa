@@ -1347,14 +1347,13 @@
     }
     
     .header-nav {
-      gap: 2px;
-      transition: gap 0.3s ease;
       overflow-x: auto;
-      overflow-y: hidden;
+      padding-bottom: 4px;
       scrollbar-width: none; /* Firefox */
       -ms-overflow-style: none; /* IE/Edge */
-      padding-bottom: 4px;
-      flex-shrink: 0;
+      gap: 1px;
+      flex: 1;
+      min-width: 0;
     }
     
     /* ✅ CORREÇÃO: Ocultar scrollbar mas manter funcionalidade */
@@ -1382,12 +1381,17 @@
     /* ✅ CORREÇÃO: Menu expandido quando há mapa ativo (ocupa espaço do texto) */
     .app-header.has-map .header-brand {
       gap: 4px; /* Reduzir espaço do brand */
+      flex-shrink: 1;
+      min-width: auto;
+      max-width: 40px;
     }
     
     .app-header.has-map .header-nav {
       gap: 4px;
       overflow-x: auto;
       overflow-y: hidden;
+      flex: 1;
+      min-width: 0;
     }
     
     .app-header.has-map .nav-btn {
@@ -1475,6 +1479,8 @@
     /* ✅ CORREÇÃO: Menu expandido em telas pequenas */
     .app-header.has-map .header-nav {
       gap: 2px;
+      flex: 1;
+      min-width: 0;
     }
     
     .app-header.has-map .nav-btn {
@@ -4028,30 +4034,30 @@
   transition: opacity 0.2s ease;
 }
 
-/* ✅ CORREÇÃO: Botão de marcador - usar seletor específico para nav-btn */
-.nav-btn.marker-btn.active {
+/* Botão de marcador */
+.marker-btn.active {
   background-color: #ff6b35 !important;
   color: white !important;
   transform: scale(1.05);
   box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
 }
 
-.nav-btn.marker-btn:not(.active) {
+.marker-btn:not(.active) {
   background-color: #f5f5f5 !important;
   color: #333 !important;
   transform: scale(1);
   box-shadow: none;
 }
 
-/* ✅ CORREÇÃO: Botão de lápis - usar seletor específico para nav-btn */
-.nav-btn.lapis-btn.active {
+/* Botão de lápis */
+.lapis-btn.active {
   background-color: #2c3e50 !important;
   color: white !important;
   transform: scale(1.05);
   box-shadow: 0 4px 12px rgba(44, 62, 80, 0.3);
 }
 
-.nav-btn.lapis-btn:not(.active) {
+.lapis-btn:not(.active) {
   background-color: #f5f5f5 !important;
   color: #333 !important;
   transform: scale(1);

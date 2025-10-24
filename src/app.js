@@ -647,7 +647,6 @@ try {
     nodeSliderDragStart.y = 0;
     nodeSliderDragCancelled = false;
   });
-  
 } catch (error) {
   console.error('❌ Failed to create node slider:', error);
 }
@@ -958,7 +957,7 @@ function toggleFloatingChat() {
     }
   } else {
     floatingChat.style.display = 'none';
-    floatingChat.classList.remove('open');
+    floatingChat.classList.remove('open', 'minimized');
   }
 }
 
@@ -1283,10 +1282,8 @@ async function handleFloatingChatSend() {
       
       // Criar prompt contextual sobre o mapa
       const contextualPrompt = `Você é um assistente especializado em mapas mentais. Responda APENAS sobre o mapa fornecido.
-
 MAPA ATUAL:
 ${JSON.stringify(state.currentMap, null, 2)}
-
 PERGUNTA DO USUÁRIO: ${message}
 
 Responda de forma concisa e prática sobre a estrutura, organização ou conteúdo do mapa.`;
@@ -1882,10 +1879,6 @@ savedMapsList.addEventListener('click', (ev) => {
     }
   }
 });
-
-
-
-
 /* Helpers */
 // Funções auxiliares de chat removidas - serão reconstruídas
 
@@ -2534,8 +2527,48 @@ function handleSaveMap() {
     updateStatus(`Erro ao salvar: ${err.message}`);
   }
 }
-/* ...existing code... */
 
+// ✅ FUNÇÃO DE TESTE: Verificar dimensões do header e espaço disponível
+window.testHeaderDimensions = function() {
+  console.log('📱 TESTE DE DIMENSÕES DO HEADER');
+  console.log('==========================================');
+  
+  const header = document.querySelector('.app-header');
+  const brand = document.querySelector('.header-brand');
+  const nav = document.querySelector('.header-nav');
+  
+  if (header) {
+    const headerRect = header.getBoundingClientRect();
+    console.log(`📱 HEADER:`);
+    console.log(`   - Largura total: ${headerRect.width}px`);
+    console.log(`   - Altura: ${headerRect.height}px`);
+    console.log(`   - Classes: ${header.className}`);
+  }
+  
+  if (brand) {
+    const brandRect = brand.getBoundingClientRect();
+    console.log(`📱 BRAND:`);
+    console.log(`   - Largura: ${brandRect.width}px`);
+    console.log(`   - Altura: ${brandRect.height}px`);
+    console.log(`   - Offset esquerdo: ${brandRect.left}px`);
+  }
+  
+  if (nav) {
+    const navRect = nav.getBoundingClientRect();
+    console.log(`📱 NAV:`);
+    console.log(`   - Largura: ${navRect.width}px`);
+    console.log(`   - Altura: ${navRect.height}px`);
+    console.log(`   - Offset: ${navRect.left}px`);
+    console.log(`   - Scroll width: ${nav.scrollWidth}px`);
+    console.log(`   - Client width: ${nav.clientWidth}px`);
+    console.log(`   - Espaço necessário: ${nav.scrollWidth > nav.clientWidth ? '❌ PRECISA SCROLL' : '✅ CABE TUDO'}`);
+  }
+  
+  const hasMap = document.querySelector('.app-header.has-map');
+  console.log(`📱 Estado: ${hasMap ? 'COM MAPA (expandido)' : 'SEM MAPA (compacto)'}`);
+  
+  console.log('==========================================');
+};
 /* Info icons logic - Variáveis movidas para o topo do arquivo */
 
 function clearOverlays() {
@@ -2613,79 +2646,26 @@ function buildNodeInfoIcons(mapJson) {
     });
   });
 
-  // ✅ OTIMIZAÇÃO: update positions on viewport changes com performance melhorada
+  // update positions on viewport changes
   /* batch updates via rAF to avoid visual lag and cover more cytoscape events */
   let _overlayUpdateRAF = null;
-  let _lastUpdateTime = 0;
-  const UPDATE_THROTTLE_MS = 16; // ~60fps
-  
   function scheduleOverlayUpdate() {
     if (_overlayUpdateRAF) return;
-    
-    const now = performance.now();
-    if (now - _lastUpdateTime < UPDATE_THROTTLE_MS) {
-      return; // Throttle para evitar updates excessivos
-    }
-    
     _overlayUpdateRAF = requestAnimationFrame(() => {
       _overlayUpdateRAF = null;
-      _lastUpdateTime = performance.now();
-      
-      // ✅ OTIMIZAÇÃO: Cache dos elementos DOM para evitar querySelector repetido
-      const overlayElements = overlaysRoot.querySelectorAll('.node-info');
-      const overlayMap = new Map();
-      
-      overlayElements.forEach(el => {
-        const nodeId = el.getAttribute('data-node-id');
-        if (nodeId) overlayMap.set(nodeId, el);
+      state.cy.nodes().forEach(n => {
+        const nodeEl = overlaysRoot.querySelector(`.node-info[data-node-id="${n.id()}"]`);
+        if (nodeEl) positionOverlay(nodeEl, n.renderedPosition());
       });
-      
-      // ✅ OTIMIZAÇÃO: Processar apenas nós visíveis e com overlays
-      const visibleNodes = state.cy.nodes(':visible');
-      let processedCount = 0;
-      const MAX_NODES_PER_FRAME = 20; // Limitar processamento por frame
-      
-      for (const node of visibleNodes) {
-        if (processedCount >= MAX_NODES_PER_FRAME) {
-          // Se há muitos nós, agendar próximo frame
-          scheduleOverlayUpdate();
-          break;
-        }
-        
-        const nodeId = node.id();
-        const nodeEl = overlayMap.get(nodeId);
-        if (nodeEl) {
-          const pos = node.renderedPosition();
-          // ✅ OTIMIZAÇÃO: Aplicar posição diretamente sem função extra
-          nodeEl.style.left = (pos.x + 24) + 'px';
-          nodeEl.style.top = (pos.y - 12) + 'px';
-          processedCount++;
-        }
-      }
     });
   }
   ['pan','zoom','resize','position','drag','render'].forEach(evt => state.cy.on(evt, scheduleOverlayUpdate));
 }
 
-// ✅ FUNÇÃO DE THROTTLING GENÉRICA PARA PERFORMANCE
-function createThrottledHandler(handler, delay = 16) {
-  let lastCall = 0;
-  let timeoutId = null;
-  
-  return function(...args) {
-    const now = performance.now();
-    
-    if (now - lastCall >= delay) {
-      lastCall = now;
-      handler.apply(this, args);
-    } else if (!timeoutId) {
-      timeoutId = setTimeout(() => {
-        timeoutId = null;
-        lastCall = performance.now();
-        handler.apply(this, args);
-      }, delay - (now - lastCall));
-    }
-  };
+function positionOverlay(el, pos) {
+  // offset top-right of node
+  el.style.left = (pos.x + 24) + 'px';
+  el.style.top = (pos.y - 12) + 'px';
 }
 
 /* show tooltip and request node-specific summary from model */
@@ -3574,7 +3554,6 @@ async function showTooltipForNode(node, anchorEl, mapJson) {
       setTimeout(() => cleanup(), 160);
     });
   });
-
   // Generate Image prompt popup
   const genBtn = tooltip.querySelector('.gen-image');
   if (genBtn) {
@@ -4223,7 +4202,6 @@ async function convertBlobToJpeg(blob, quality = 0.9) {
   }
 }
 function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
-
 /* apply persisted theme/layout if exists */
 function applyTheme(theme) {
   if (!theme) return;
@@ -4574,7 +4552,6 @@ function persistCurrentMap() {
     const stored = window.Storage.GeraMapas.getMap(state.currentMapId);
     if (stored) window.Storage.GeraMapas.updateMap(state.currentMapId, { title: stored.title, data: state.currentMap });
 }
-
 function showCollapsedListPopup(cyNode, collapsedKids) {
   // Remove popup existente
   const existingPopup = document.querySelector('.context-popup');
@@ -4687,7 +4664,7 @@ function showCollapsedListPopup(cyNode, collapsedKids) {
       </div>
       
     <div style="margin-bottom: 15px;">
-      <label style="display: block; font-size: 12px; color: #666; margin-bottom: 4px;">Forma do nó:</label>
+      <label style="display: block; font-size: 12px; color: #666; margin-bottom: 8px;">Forma do nó:</label>
       <select class="popup-shape" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; background: white; cursor: pointer;">
         <option value="roundrectangle">📦 Retângulo Arredondado (padrão)</option>
         <option value="rectangle">⬜ Retângulo</option>
@@ -5574,7 +5551,7 @@ document.addEventListener('keydown', (e) => {
 if (state.cy) {
   let isInternalZoom = false; // Flag para evitar loops
   
-  state.cy.on('zoom', createThrottledHandler(() => {
+  state.cy.on('zoom', () => {
     if (isInternalZoom) return; // Evitar sincronização durante zoom interno
     
     const cyZoom = state.cy.zoom();
@@ -5582,7 +5559,7 @@ if (state.cy) {
       currentZoom = cyZoom;
       updateZoomDisplay();
     }
-  }, 16)); // Throttle para 60fps
+  });
   
   // ✅ CORREÇÃO: Marcar zoom interno para evitar conflitos
   const originalPerformZoom = window.performZoom;
@@ -5866,7 +5843,6 @@ function removeNodeFromMap(nodeId) {
   
   removeNodeFromTree(state.currentMap.nodes, nodeId);
 }
-
 // Função auxiliar para fechar popup
 function closePopup(popupType) {
   // Implementação básica - pode ser expandida conforme necessário
@@ -6461,10 +6437,8 @@ function testMobilePopups() {
     alert(`📱 TESTE DE POPUPS MÓVEIS\n\n✅ Dispositivo móvel: ${isMobile}\n✅ Total de popups: ${allPopups.length}\n✅ Botões fechar: ${closeButtons.length}\n\nPara testar:\n1. Abra um popup\n2. Execute: testMobilePopups()\n3. Teste fechar com toque`);
   }
 }
-
 // ✅ EXPORTA FUNÇÃO DE TESTE DE POPUPS MÓVEIS
 window.testMobilePopups = testMobilePopups;
-
 // ✅ FUNÇÃO DE TESTE ESPECÍFICA PARA POPUP DE INFORMAÇÃO
 function testMapInfoPopup() {
   console.log('🧪 TESTANDO POPUP DE INFORMAÇÃO DO MAPA...');
@@ -7082,7 +7056,6 @@ function downloadActiveTabContent(nodeSlider, nodeLabel) {
     alert('❌ Erro ao fazer download: ' + error.message);
   }
 }
-
 // ☕ FUNCIONALIDADE DO ÍCONE "PAGUE UM CAFÉ" DESLOCÁVEL
 function initCoffeeIcon() {
   const coffeeIcon = document.getElementById('coffeeIcon');
@@ -7235,6 +7208,54 @@ function initCoffeeIcon() {
     console.log('🔍 Logs detalhados serão exibidos no console durante o teste');
   };
 
+  // ✅ FUNÇÃO DE TESTE: Verificar visibilidade dos botões no mobile
+  window.testMobileButtonVisibility = function() {
+    console.log('🔍 TESTE DE VISIBILIDADE DOS BOTÕES MOBILE');
+    console.log('==========================================');
+    
+    const buttons = [
+      { name: 'Modelos de Mapas', element: mapModelsBtn },
+      { name: 'Marcador', element: markerBtn },
+      { name: 'Lápis', element: lapisBtn }
+    ];
+    
+    buttons.forEach(btn => {
+      if (btn.element) {
+        const computedStyle = window.getComputedStyle(btn.element);
+        const display = computedStyle.display;
+        const visibility = computedStyle.visibility;
+        const opacity = computedStyle.opacity;
+        
+        console.log(`📱 ${btn.name}:`);
+        console.log(`   - Elemento existe: ✅`);
+        console.log(`   - Display: ${display}`);
+        console.log(`   - Visibility: ${visibility}`);
+        console.log(`   - Opacity: ${opacity}`);
+        console.log(`   - OffsetWidth: ${btn.element.offsetWidth}`);
+        console.log(`   - OffsetHeight: ${btn.element.offsetHeight}`);
+        console.log(`   - ClientRect: ${btn.element.getBoundingClientRect().width}x${btn.element.getBoundingClientRect().height}`);
+        console.log('---');
+      } else {
+        console.log(`❌ ${btn.name}: Elemento não encontrado`);
+      }
+    });
+    
+    // Verificar estado do header
+    const header = document.querySelector('.app-header');
+    if (header) {
+      console.log(`📱 Header classes: ${header.className}`);
+      console.log(`📱 Header has-map: ${header.classList.contains('has-map')}`);
+    }
+    
+    // Verificar se há mapa ativo
+    const hasActiveMap = state.currentMap && state.currentMap.nodes && state.currentMap.nodes.length > 0;
+    console.log(`📱 Mapa ativo: ${hasActiveMap}`);
+    console.log(`📱 Nodes count: ${state.currentMap ? state.currentMap.nodes.length : 0}`);
+    
+    console.log('==========================================');
+    console.log('💡 Para testar: gere um mapa e execute novamente');
+  };
+
   // ✅ CORREÇÃO: Controlar expansão do menu no mobile baseado em mapa ativo
   function updateMobileMenuState() {
     const header = document.querySelector('.app-header');
@@ -7244,14 +7265,38 @@ function initCoffeeIcon() {
     // Verificar se há um mapa ativo
     const hasActiveMap = state.currentMap && state.currentMap.nodes && state.currentMap.nodes.length > 0;
     
+    console.log('🔄 updateMobileMenuState() CHAMADA');
+    console.log('   - Mapa ativo:', hasActiveMap);
+    console.log('   - Nós no mapa:', state.currentMap ? state.currentMap.nodes.length : 0);
+    
     if (hasActiveMap) {
       header.classList.add('has-map');
       console.log('📱 Menu EXPANDIDO - mapa ativo detectado');
       
       // ✅ CORREÇÃO: Garantir que botões específicos sejam visíveis
-      if (mapModelsBtn) mapModelsBtn.style.display = 'flex';
-      if (markerBtn) markerBtn.style.display = 'flex';
-      if (lapisBtn) lapisBtn.style.display = 'flex';
+      if (mapModelsBtn) {
+        mapModelsBtn.style.display = 'flex';
+        mapModelsBtn.style.setProperty('display', 'flex', 'important');
+        console.log('   ✅ mapModelsBtn (🗺️ Modelos): VISÍVEL');
+      } else {
+        console.log('   ❌ mapModelsBtn não encontrado!');
+      }
+      
+      if (markerBtn) {
+        markerBtn.style.display = 'flex';
+        markerBtn.style.setProperty('display', 'flex', 'important');
+        console.log('   ✅ markerBtn (🖍️ Marcador): VISÍVEL');
+      } else {
+        console.log('   ❌ markerBtn não encontrado!');
+      }
+      
+      if (lapisBtn) {
+        lapisBtn.style.display = 'flex';
+        lapisBtn.style.setProperty('display', 'flex', 'important');
+        console.log('   ✅ lapisBtn (✏️ Lápis): VISÍVEL');
+      } else {
+        console.log('   ❌ lapisBtn não encontrado!');
+      }
       
       console.log('✅ Botões específicos: modelos, marcador e lápis VISÍVEIS');
     } else {
@@ -7259,116 +7304,25 @@ function initCoffeeIcon() {
       console.log('📱 Menu COMPACTO - nenhum mapa ativo');
       
       // ✅ CORREÇÃO: Ocultar botões específicos quando não há mapa
-      if (mapModelsBtn) mapModelsBtn.style.display = 'none';
-      if (markerBtn) markerBtn.style.display = 'none';
-      if (lapisBtn) lapisBtn.style.display = 'none';
+      if (mapModelsBtn) {
+        mapModelsBtn.style.display = 'none';
+        mapModelsBtn.style.setProperty('display', 'none', 'important');
+        console.log('   ❌ mapModelsBtn (🗺️ Modelos): OCULTO');
+      }
+      if (markerBtn) {
+        markerBtn.style.display = 'none';
+        markerBtn.style.setProperty('display', 'none', 'important');
+        console.log('   ❌ markerBtn (🖍️ Marcador): OCULTO');
+      }
+      if (lapisBtn) {
+        lapisBtn.style.display = 'none';
+        lapisBtn.style.setProperty('display', 'none', 'important');
+        console.log('   ❌ lapisBtn (✏️ Lápis): OCULTO');
+      }
       
       console.log('❌ Botões específicos: modelos, marcador e lápis OCULTOS');
     }
   }
-
-  // ✅ FUNÇÃO DE DEBUG ESPECÍFICA PARA INVESTIGAR PROBLEMA MOBILE
-  window.debugMobileIcons = function() {
-    console.log('🔍 === DEBUG MOBILE ICONS - INVESTIGAÇÃO SISTEMÁTICA ===');
-    
-    // 1. Verificar se os elementos existem
-    console.log('1️⃣ VERIFICAÇÃO DE ELEMENTOS:');
-    console.log('mapModelsBtn:', mapModelsBtn ? '✅ Existe' : '❌ Não existe');
-    console.log('markerBtn:', markerBtn ? '✅ Existe' : '❌ Não existe');
-    console.log('lapisBtn:', lapisBtn ? '✅ Existe' : '❌ Não existe');
-    
-    // 2. Verificar estado atual dos botões
-    console.log('2️⃣ ESTADO ATUAL DOS BOTÕES:');
-    if (mapModelsBtn) {
-      console.log('mapModelsBtn.style.display:', mapModelsBtn.style.display);
-      console.log('mapModelsBtn.offsetWidth:', mapModelsBtn.offsetWidth);
-      console.log('mapModelsBtn.offsetHeight:', mapModelsBtn.offsetHeight);
-    }
-    if (markerBtn) {
-      console.log('markerBtn.style.display:', markerBtn.style.display);
-      console.log('markerBtn.offsetWidth:', markerBtn.offsetWidth);
-      console.log('markerBtn.offsetHeight:', markerBtn.offsetHeight);
-    }
-    if (lapisBtn) {
-      console.log('lapisBtn.style.display:', lapisBtn.style.display);
-      console.log('lapisBtn.offsetWidth:', lapisBtn.offsetWidth);
-      console.log('lapisBtn.offsetHeight:', lapisBtn.offsetHeight);
-    }
-    
-    // 3. Verificar estado do mapa
-    console.log('3️⃣ ESTADO DO MAPA:');
-    console.log('state.currentMap:', state.currentMap ? '✅ Existe' : '❌ Não existe');
-    if (state.currentMap) {
-      console.log('state.currentMap.nodes:', state.currentMap.nodes ? '✅ Existe' : '❌ Não existe');
-      console.log('state.currentMap.nodes.length:', state.currentMap.nodes ? state.currentMap.nodes.length : 'N/A');
-    }
-    
-    // 4. Verificar CSS computado
-    console.log('4️⃣ CSS COMPUTADO:');
-    if (mapModelsBtn) {
-      const computedStyle = window.getComputedStyle(mapModelsBtn);
-      console.log('mapModelsBtn computed display:', computedStyle.display);
-      console.log('mapModelsBtn computed visibility:', computedStyle.visibility);
-      console.log('mapModelsBtn computed opacity:', computedStyle.opacity);
-    }
-    
-    // 5. Verificar header-nav
-    console.log('5️⃣ HEADER NAV:');
-    const headerNav = document.querySelector('.header-nav');
-    if (headerNav) {
-      console.log('headerNav.offsetWidth:', headerNav.offsetWidth);
-      console.log('headerNav.scrollWidth:', headerNav.scrollWidth);
-      console.log('headerNav.overflow-x:', window.getComputedStyle(headerNav).overflowX);
-    }
-    
-    // 6. Verificar se é mobile
-    console.log('6️⃣ DETECÇÃO MOBILE:');
-    const isMobile = window.innerWidth <= 768;
-    console.log('window.innerWidth:', window.innerWidth);
-    console.log('É mobile:', isMobile ? '✅ Sim' : '❌ Não');
-    
-    // 7. Verificar classe has-map
-    console.log('7️⃣ CLASSE HAS-MAP:');
-    const header = document.querySelector('.app-header');
-    if (header) {
-      console.log('header.classList.contains("has-map"):', header.classList.contains('has-map'));
-    }
-    
-    console.log('🔍 === FIM DA INVESTIGAÇÃO ===');
-  };
-
-  // ✅ FUNÇÃO DE TESTE PARA VALIDAR updateMobileMenuState()
-  window.testUpdateMobileMenuState = function() {
-    console.log('🧪 === TESTE updateMobileMenuState() ===');
-    
-    // Simular estado sem mapa
-    console.log('1️⃣ TESTE SEM MAPA:');
-    state.currentMap = null;
-    updateMobileMenuState();
-    
-    // Verificar resultado
-    setTimeout(() => {
-      console.log('Resultado sem mapa:');
-      console.log('mapModelsBtn.style.display:', mapModelsBtn ? mapModelsBtn.style.display : 'N/A');
-      console.log('markerBtn.style.display:', markerBtn ? markerBtn.style.display : 'N/A');
-      console.log('lapisBtn.style.display:', lapisBtn ? lapisBtn.style.display : 'N/A');
-      
-      // Simular estado com mapa
-      console.log('2️⃣ TESTE COM MAPA:');
-      state.currentMap = { nodes: [{ id: 'test' }] };
-      updateMobileMenuState();
-      
-      // Verificar resultado
-      setTimeout(() => {
-        console.log('Resultado com mapa:');
-        console.log('mapModelsBtn.style.display:', mapModelsBtn ? mapModelsBtn.style.display : 'N/A');
-        console.log('markerBtn.style.display:', markerBtn ? markerBtn.style.display : 'N/A');
-        console.log('lapisBtn.style.display:', lapisBtn ? lapisBtn.style.display : 'N/A');
-        
-        console.log('🧪 === FIM DO TESTE ===');
-      }, 100);
-    }, 100);
-  };
 
 // Initialize app when DOM is loaded with extension safety
 if (typeof window !== 'undefined') {

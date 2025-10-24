@@ -2,6 +2,31 @@
    NOVO LAYOUT CSS GRID RESPONSIVO
    ======================================== */
 
+/* ========================================
+   SISTEMA DE RESPONSIVIDADE UNIFICADO
+   ======================================== */
+/* Breakpoints padronizados:
+   - Mobile XS: 0-375px (iPhone SE, pequenos)
+   - Mobile SM: 376-480px (iPhones pequenos)
+   - Mobile MD: 481-768px (iPhones grandes, Android)
+   - Tablet: 769-1024px (iPads, tablets)
+   - Desktop: 1025px+ (notebooks, desktops)
+*/
+
+:root {
+  /* Breakpoint values for reference */
+  --bp-xs: 375px;
+  --bp-sm: 480px;
+  --bp-md: 768px;
+  --bp-lg: 1024px;
+  --bp-xl: 1366px;
+  
+  /* Touch target sizes */
+  --touch-min: 44px;
+  --touch-comfortable: 48px;
+  --touch-large: 56px;
+}
+
 /* CSS Grid Layout Principal */
 .app-grid {
     display: grid;
@@ -14,16 +39,33 @@
     overflow: hidden;
   }
   
-  /* ✅ CORREÇÃO: Ajustar grid para mobile garantindo visibilidade do footer */
-  @media (max-width: 768px) {
+  /* ✅ RESPONSIVO: Ajustar grid para diferentes resoluções */
+  
+  /* Mobile Extra Small (≤375px) */
+  @media (max-width: 375px) {
     .app-grid {
-      grid-template-rows: 60px 1fr 50px; /* ✅ Footer com 50px no mobile */
+      grid-template-rows: 56px 1fr 56px; /* Header e footer compactos mas touch-friendly */
     }
   }
   
-  @media (max-width: 480px) {
+  /* Mobile Small (376px-480px) */
+  @media (min-width: 376px) and (max-width: 480px) {
     .app-grid {
-      grid-template-rows: 60px 1fr 48px; /* ✅ Footer com 48px em telas pequenas */
+      grid-template-rows: 58px 1fr 56px;
+    }
+  }
+  
+  /* Mobile Medium/Large (481px-768px) */
+  @media (min-width: 481px) and (max-width: 768px) {
+    .app-grid {
+      grid-template-rows: 60px 1fr 56px;
+    }
+  }
+  
+  /* Tablet (769px-1024px) */
+  @media (min-width: 769px) and (max-width: 1024px) {
+    .app-grid {
+      grid-template-rows: 60px 1fr 48px;
     }
   }
   
@@ -143,6 +185,37 @@
     -webkit-touch-callout: none;
   }
   
+  /* ✅ CORREÇÃO: Padding no mobile para não sobrepor footer fixo */
+  @media (max-width: 768px) {
+    .app-main {
+      padding-bottom: 56px; /* ✅ Altura do footer mobile */
+    }
+    
+    .map-container {
+      height: calc(100% - 56px); /* ✅ Ajustar altura considerando footer */
+    }
+  }
+  
+  @media (max-width: 480px) {
+    .app-main {
+      padding-bottom: 56px;
+    }
+    
+    .map-container {
+      height: calc(100% - 56px);
+    }
+  }
+  
+  @media (max-width: 375px) {
+    .app-main {
+      padding-bottom: 56px;
+    }
+    
+    .map-container {
+      height: calc(100% - 56px);
+    }
+  }
+  
   /* Status Bar */
   .app-status {
     grid-area: status;
@@ -182,55 +255,119 @@
     border-color: var(--accent);
   }
   
-  /* ✅ CORREÇÃO: Garantir visibilidade e responsividade dos botões de ação no mobile */
+  /* ========================================
+     RESPONSIVIDADE DO FOOTER (STATUS BAR)
+     ======================================== */
+  
+  /* Mobile Large (≤768px) */
   @media (max-width: 768px) {
     .app-status {
-      padding: 0 12px;
-      min-height: 50px; /* ✅ Altura mínima para garantir visibilidade */
-      z-index: 95; /* ✅ Aumentar z-index no mobile */
+      position: fixed; /* ✅ FOOTER FIXO - sempre visível */
+      bottom: 0;
+      left: 0;
+      right: 0;
+      width: 100%;
+      padding: 8px 12px;
+      min-height: 56px;
+      z-index: 250; /* ✅ ACIMA DE TUDO (zoom: 50, chats: 200, popups: 200) */
+      border-top: 2px solid var(--border);
+      box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.1); /* ✅ Sombra para destacar */
+      background: var(--bg); /* ✅ Garantir fundo sólido */
+    }
+    
+    .status-info {
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
     
     .status-actions {
-      display: flex !important; /* ✅ Forçar exibição */
-      gap: 6px;
+      display: flex !important;
+      gap: 8px;
       flex-shrink: 0;
     }
     
     .status-btn {
-      padding: 8px 12px;
-      font-size: 16px;
-      min-width: 44px;
-      min-height: 44px;
-      display: flex !important; /* ✅ Forçar exibição */
+      padding: 10px 14px;
+      font-size: 18px; /* ✅ Ícones maiores */
+      min-width: var(--touch-comfortable); /* 48px */
+      min-height: var(--touch-comfortable);
+      display: flex !important;
       align-items: center;
       justify-content: center;
       touch-action: manipulation;
       -webkit-tap-highlight-color: transparent;
+      border-radius: 8px; /* ✅ Mais arredondado */
+    }
+    
+    .status-btn:hover {
+      background: rgba(0,0,0,0.05);
     }
     
     .status-btn:active {
       background: rgba(0,0,0,0.1);
       transform: scale(0.95);
     }
+    
+    .status-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
   }
   
+  /* Mobile Small (≤480px) */
   @media (max-width: 480px) {
     .app-status {
-      padding: 0 10px;
-      min-height: 48px; /* ✅ Altura mínima para telas pequenas */
+      position: fixed; /* ✅ FOOTER FIXO - sempre visível */
+      bottom: 0;
+      left: 0;
+      right: 0;
+      width: 100%;
+      padding: 6px 10px;
+      min-height: 56px;
+      z-index: 250; /* ✅ ACIMA DE TUDO */
+      box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.15);
+    }
+    
+    .status-actions {
+      gap: 6px;
+    }
+    
+    .status-btn {
+      padding: 8px 12px;
+      font-size: 16px;
+      min-width: var(--touch-min); /* 44px */
+      min-height: var(--touch-min);
+    }
+  }
+  
+  /* Mobile Extra Small (≤375px) */
+  @media (max-width: 375px) {
+    .app-status {
+      position: fixed; /* ✅ FOOTER FIXO - sempre visível */
+      bottom: 0;
+      left: 0;
+      right: 0;
+      width: 100%;
+      padding: 6px 8px;
+      z-index: 250; /* ✅ ACIMA DE TUDO */
+    }
+    
+    .status-info {
+      font-size: 10px;
     }
     
     .status-actions {
       gap: 4px;
-      display: flex !important; /* ✅ Forçar exibição */
     }
     
     .status-btn {
       padding: 6px 10px;
-      font-size: 14px;
-      min-width: 40px;
-      min-height: 40px;
-      display: flex !important; /* ✅ Forçar exibição */
+      font-size: 15px;
+      min-width: var(--touch-min); /* 44px - não reduzir mais */
+      min-height: var(--touch-min);
     }
   }
   
@@ -585,62 +722,129 @@
     }
   }
   
+  /* Mobile Large (≤768px) */
   @media (max-width: 768px) {
     .floating-chat {
       width: 90vw;
-      height: 70vh;
-      top: 10px;
-      right: 5vw;
-      left: 5vw;
+      height: 75vh; /* ✅ 75% da tela, não fullscreen */
+      max-height: calc(100vh - 130px); /* ✅ Altura máxima: viewport - header - footer - margens */
+      top: 10px; /* ✅ CORRIGIDO: 10px do topo (mais espaço visível) */
+      bottom: auto; /* ✅ Não usar bottom fixo */
+      left: 50%;
+      right: auto;
+      transform: translateX(-50%);
       min-width: 280px;
-      min-height: 300px;
-      /* ✅ Melhorar touch targets */
+      min-height: 350px;
+      border-radius: 12px; /* ✅ Manter bordas arredondadas */
       touch-action: manipulation;
       -webkit-tap-highlight-color: transparent;
+      overflow: hidden; /* ✅ Garantir que conteúdo não vaze */
+    }
+    
+    .floating-chat-header {
+      display: flex; /* ✅ ESSENCIAL: Mostrar título e botões lado a lado */
+      align-items: center; /* ✅ ESSENCIAL: Alinhar verticalmente */
+      justify-content: space-between; /* ✅ ESSENCIAL: Separar título e botões */
+      gap: 8px;
+      padding: 12px 14px;
+      min-height: 48px; /* ✅ Touch-friendly */
+    }
+    
+    .floating-chat-controls {
+      display: flex; /* ✅ ESSENCIAL: Mostrar botões X e − */
+      gap: 6px;
+      flex-shrink: 0; /* ✅ Não comprimir botões */
+    }
+    
+    .control-btn {
+      min-width: 44px; /* ✅ Touch-friendly */
+      min-height: 44px;
+      width: 44px; /* ✅ Tamanho fixo */
+      height: 44px;
+      font-size: 20px; /* ✅ Ícone maior para mobile */
+      display: flex; /* ✅ ESSENCIAL: Centralizar ícone */
+      align-items: center; /* ✅ ESSENCIAL: Centralizar verticalmente */
+      justify-content: center; /* ✅ ESSENCIAL: Centralizar horizontalmente */
+      flex-shrink: 0;
+      padding: 0; /* ✅ Remover padding para não afetar tamanho */
     }
     
     .floating-chat-log {
-      max-height: 40vh;
-      /* ✅ Melhorar scroll em móveis */
+      max-height: 45vh;
       -webkit-overflow-scrolling: touch;
       overscroll-behavior: contain;
     }
     
     .floating-chat-input textarea {
-      min-height: 60px;
-      /* ✅ Melhorar área de toque */
+      min-height: 70px; /* ✅ Mais espaço para digitar */
+      font-size: 16px; /* ✅ Evitar zoom no iOS */
       touch-action: manipulation;
       -webkit-tap-highlight-color: transparent;
     }
     
+    .action-buttons button {
+      min-width: var(--touch-comfortable); /* 48px */
+      min-height: var(--touch-comfortable);
+    }
+    
     .realtime-actions {
-      flex-direction: column;
-      gap: 4px;
+      flex-wrap: wrap;
+      gap: 8px;
     }
   }
   
+  /* Mobile Small (≤480px) */
   @media (max-width: 480px) {
     .floating-chat {
-      width: 100vw;
-      height: 100vh;
-      top: 0;
-      right: 0;
-      left: 0;
-      border-radius: 0;
-      min-width: 100vw;
-      min-height: 100vh;
+      width: 95vw; /* ✅ 95%, NÃO fullscreen */
+      height: 70vh; /* ✅ 70%, permite ver o mapa */
+      max-height: calc(100vh - 120px); /* ✅ Altura máxima: viewport - header - footer - margens */
+      top: 10px; /* ✅ CORRIGIDO: 10px do topo */
+      bottom: auto; /* ✅ Não usar bottom fixo */
+      min-width: 95vw;
+      min-height: 350px; /* ✅ AJUSTADO: Reduzido de 400px para 350px */
+      border-radius: 12px; /* ✅ Manter bordas */
     }
     
     .floating-chat-log {
-      max-height: 50vh;
+      max-height: 40vh;
     }
     
     .floating-chat-header {
+      display: flex; /* ✅ ESSENCIAL: Mostrar título e botões lado a lado */
+      align-items: center; /* ✅ ESSENCIAL: Alinhar verticalmente */
+      justify-content: space-between; /* ✅ ESSENCIAL: Separar título e botões */
+      gap: 6px;
       padding: 10px 12px;
+      min-height: 48px;
+    }
+    
+    .floating-chat-controls {
+      display: flex; /* ✅ ESSENCIAL: Mostrar botões X e − */
+      gap: 4px;
+      flex-shrink: 0; /* ✅ Não comprimir botões */
+    }
+    
+    .control-btn {
+      min-width: 44px; /* ✅ Touch-friendly */
+      min-height: 44px;
+      width: 44px;
+      height: 44px;
+      font-size: 18px; /* ✅ Ícone visível */
+      display: flex; /* ✅ ESSENCIAL: Centralizar ícone */
+      align-items: center; /* ✅ ESSENCIAL: Centralizar verticalmente */
+      justify-content: center; /* ✅ ESSENCIAL: Centralizar horizontalmente */
+      flex-shrink: 0;
+      padding: 0;
     }
     
     .floating-chat-body {
       padding: 12px;
+    }
+    
+    .floating-chat-input textarea {
+      min-height: 60px;
+      font-size: 16px;
     }
     
     .floating-chat-actions {
@@ -651,7 +855,12 @@
     .action-buttons,
     .realtime-actions {
       width: 100%;
-      justify-content: center;
+      justify-content: space-evenly;
+    }
+    
+    .action-buttons button {
+      flex: 1;
+      min-width: 80px;
     }
   }
   
@@ -1286,19 +1495,29 @@
      RESPONSIVIDADE
      ======================================== */
   
-  /* Tablet */
-  @media (max-width: 1024px) {
+  /* ========================================
+     RESPONSIVIDADE: TABLET (769px-1024px)
+     ======================================== */
+  @media (min-width: 769px) and (max-width: 1024px) {
+    .app-header {
+      padding: 0 16px;
+    }
+    
     .header-nav {
-      gap: 4px;
+      gap: 6px;
     }
     
     .nav-btn {
-      min-width: 50px;
-      padding: 6px 8px;
+      min-width: 55px;
+      padding: 6px 10px;
+    }
+    
+    .nav-icon {
+      font-size: 20px;
     }
     
     .nav-text {
-      font-size: 9px;
+      font-size: 10px;
     }
     
     .mobile-popup {
@@ -1390,8 +1609,9 @@
     }
     
     .nav-btn {
-      min-width: 40px;
-      padding: 4px 6px;
+      min-width: 48px; /* ✅ Touch-friendly */
+      min-height: var(--touch-min); /* 44px */
+      padding: 6px 8px;
       transition: all 0.3s ease;
       flex-shrink: 0;
       margin: 0;
@@ -1399,11 +1619,11 @@
     }
     
     .nav-icon {
-      font-size: 14px;
+      font-size: 16px; /* ✅ Maior para legibilidade */
     }
     
     .nav-text {
-      font-size: 8px;
+      font-size: 9px; /* ✅ Melhor legibilidade */
     }
     
     /* ✅ CORREÇÃO: Menu expandido quando há mapa ativo (ocupa espaço do texto) */
@@ -1424,8 +1644,13 @@
     
     .app-header.has-map .nav-btn {
       min-width: 50px;
+      min-height: var(--touch-min); /* 44px */
       padding: 6px 10px;
       flex-shrink: 0;
+    }
+    
+    .app-header.has-map .nav-icon {
+      font-size: 16px;
     }
     
     .app-header.has-map .nav-text {
@@ -1437,87 +1662,144 @@
       font-size: 11px;
     }
     
+    /* ✅ POPUPS: 90% x 85%, centralizados, NÃO fullscreen */
     .mobile-popup {
-      max-width: 100vw;
-      max-height: 90vh;
-      border-radius: 0;
-      top: 60px !important;
-      left: 0 !important;
-      right: 0 !important;
-      width: 100vw !important;
+      width: 90vw !important;
+      max-width: 90vw;
+      height: 85vh !important;
+      max-height: 85vh;
+      border-radius: 12px; /* ✅ Manter bordas arredondadas */
+      top: 50% !important;
+      left: 50% !important;
+      right: auto !important;
+      transform: translate(-50%, -50%); /* ✅ Centralizar */
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3); /* ✅ Destaque */
     }
     
     #savedMapsPopup {
-      width: 100vw !important;
+      width: 90vw !important;
       height: 85vh !important;
-      top: 60px !important;
-      left: 0 !important;
-      right: 0 !important;
-      max-width: none !important;
+      max-width: 90vw !important;
+      max-height: 85vh;
+      top: 50% !important;
+      left: 50% !important;
+      right: auto !important;
+      transform: translate(-50%, -50%);
+      border-radius: 12px;
     }
     
     #savedMapsPopup .popup-header {
-      padding: 12px 16px;
+      padding: 14px 16px;
+      min-height: 56px; /* ✅ Touch-friendly */
     }
     
     #savedMapsPopup .popup-content {
-      padding: 12px 16px;
+      padding: 14px 16px;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
     }
     
     .popup-header {
-      padding: 16px;
+      padding: 14px 16px;
+      min-height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    
+    .popup-close {
+      min-width: var(--touch-comfortable); /* 48px */
+      min-height: var(--touch-comfortable);
+      font-size: 24px;
+      display: flex !important;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      border-radius: 8px;
+      transition: background 0.2s ease;
+    }
+    
+    .popup-close:hover,
+    .popup-close:active {
+      background: rgba(0, 0, 0, 0.1);
     }
     
     .popup-content {
       padding: 16px;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
     }
     
     .fixed-popup {
-      width: calc(100vw - 24px);
-      top: 70px;
-      left: 12px;
+      width: 90vw;
+      max-width: 90vw;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      border-radius: 12px;
     }
   }
   
-  /* Mobile Pequeno */
+  /* ========================================
+     RESPONSIVIDADE: MOBILE SMALL (≤480px)
+     ======================================== */
   @media (max-width: 480px) {
+    .app-header {
+      padding: 0 10px;
+      min-height: 56px;
+    }
+    
+    .header-brand {
+      max-width: 36px;
+    }
+    
+    .brand-icon {
+      font-size: 22px;
+    }
+    
     .header-nav {
       overflow-x: auto;
+      overflow-y: hidden;
       padding-bottom: 4px;
-      scrollbar-width: none; /* Firefox */
-      -ms-overflow-style: none; /* IE/Edge */
-      gap: 1px;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+      gap: 4px;
+      flex: 1;
+      min-width: 0;
+      touch-action: pan-x;
     }
     
     .header-nav::-webkit-scrollbar {
-      display: none; /* Chrome/Safari */
+      display: none;
     }
     
     .nav-btn {
       flex-shrink: 0;
-      min-width: 35px;
-      padding: 3px 5px;
+      min-width: 46px; /* ✅ Touch-friendly */
+      min-height: var(--touch-min); /* 44px */
+      padding: 5px 8px;
       margin: 0;
     }
     
-    .nav-text {
-      font-size: 7px;
+    .nav-icon {
+      font-size: 15px;
     }
     
-    /* ✅ CORREÇÃO: Menu expandido em telas pequenas */
+    .nav-text {
+      font-size: 8px;
+    }
+    
+    /* ✅ Menu COM mapa: otimizar espaço */
+    .app-header.has-map .header-brand {
+      max-width: 32px;
+    }
+    
     .app-header.has-map .header-nav {
-      gap: 2px;
-      flex: 1;
-      min-width: 0;
+      gap: 3px;
     }
     
     .app-header.has-map .nav-btn {
       min-width: 45px;
-      padding: 5px 8px;
-    }
-    
-    .app-header.has-map .nav-text {
-      font-size: 8px;
     }
     
     .models-grid {
@@ -3373,27 +3655,65 @@
     min-width: 50px;
   }
   
-  /* Responsividade dos controles de zoom */
+  /* ========================================
+     RESPONSIVIDADE DOS CONTROLES DE ZOOM
+     ======================================== */
+  
+  /* Mobile Large (≤768px) */
   @media (max-width: 768px) {
     .zoom-controls {
-      bottom: 15px;
-      right: 15px;
-      padding: 10px;
-      gap: 6px;
-      /* ✅ Melhorar touch targets */
+      bottom: 70px; /* ✅ Acima do footer */
+      right: 12px;
+      padding: 12px;
+      gap: 8px;
+      flex-direction: column; /* ✅ Vertical */
       touch-action: manipulation;
       -webkit-tap-highlight-color: transparent;
     }
     
     .zoom-btn {
-      width: 40px;
-      height: 40px;
-      font-size: 16px;
-      /* ✅ Melhorar área de toque */
-      min-width: 44px;
-      min-height: 44px;
+      width: var(--touch-comfortable); /* 48px */
+      height: var(--touch-comfortable);
+      min-width: var(--touch-comfortable);
+      min-height: var(--touch-comfortable);
+      font-size: 18px;
       touch-action: manipulation;
       -webkit-tap-highlight-color: transparent;
+    }
+    
+    .zoom-icon {
+      font-size: 20px;
+    }
+    
+    .zoom-level {
+      padding: 8px 10px;
+      font-size: 12px;
+      min-width: 50px;
+      text-align: center;
+    }
+    
+    .zoom-btn.zoom-reset {
+      width: var(--touch-comfortable);
+      height: 32px;
+      font-size: 11px;
+    }
+  }
+  
+  /* Mobile Small (≤480px) */
+  @media (max-width: 480px) {
+    .zoom-controls {
+      bottom: 66px; /* ✅ Ajustar para footer */
+      right: 10px;
+      padding: 10px;
+      gap: 6px;
+    }
+    
+    .zoom-btn {
+      width: var(--touch-min); /* 44px */
+      height: var(--touch-min);
+      min-width: var(--touch-min);
+      min-height: var(--touch-min);
+      font-size: 16px;
     }
     
     .zoom-icon {
@@ -3401,27 +3721,15 @@
     }
     
     .zoom-level {
-      padding: 6px 10px;
+      padding: 6px 8px;
       font-size: 11px;
-    }
-  }
-  
-  @media (max-width: 480px) {
-    .zoom-controls {
-      bottom: 10px;
-      right: 10px;
-      padding: 8px;
-      gap: 4px;
+      min-width: 44px;
     }
     
-    .zoom-btn {
-      width: 36px;
-      height: 36px;
-      font-size: 14px;
-    }
-    
-    .zoom-icon {
-      font-size: 16px;
+    .zoom-btn.zoom-reset {
+      width: var(--touch-min);
+      height: 28px;
+      font-size: 10px;
     }
   }
   .model-selector-close {

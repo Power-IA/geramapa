@@ -788,45 +788,80 @@ let floatingChatResizeStart = { x: 0, y: 0, width: 0, height: 0 };
 function enableFloatingChatDrag() {
   const dragArea = floatingChat.querySelector('.floating-chat-drag-area');
   
-  // Mouse events
-  dragArea.addEventListener('mousedown', startFloatingChatDrag);
-  document.addEventListener('mousemove', handleFloatingChatDrag);
-  document.addEventListener('mouseup', endFloatingChatDrag);
+  if (!dragArea) return;
   
-  // Touch events para mobile
-  dragArea.addEventListener('touchstart', startFloatingChatDragTouch, { passive: false });
-  document.addEventListener('touchmove', handleFloatingChatDragTouch, { passive: false });
-  document.addEventListener('touchend', endFloatingChatDrag);
+  // ✅ OPÇÃO C: Drag em telas médias e grandes (> 600px)
+  // Mobile pequeno (≤ 600px): SEM drag (evitar movimentos acidentais)
+  // Mobile médio/grande + Desktop (> 600px): COM drag
+  const screenWidth = window.innerWidth;
+  
+  if (screenWidth > 600) {
+    // ✅ Telas > 600px: Habilitar drag com mouse
+    dragArea.addEventListener('mousedown', startFloatingChatDrag);
+    
+    // ✅ Touch para tablets e telas maiores (> 600px)
+    if (screenWidth <= 1024) {
+      dragArea.addEventListener('touchstart', startFloatingChatDragTouch, { passive: false });
+      console.log('📱 Drag habilitado (Tablet/Mobile > 600px) - Mouse + Touch');
+    } else {
+      console.log('🖥️ Drag habilitado (Desktop > 1024px) - Mouse');
+    }
+  } else {
+    console.log('📱 Drag desabilitado (Mobile ≤ 600px)');
+  }
 }
 // Função para habilitar resize do chat flutuante
 function enableFloatingChatResize() {
   const resizeHandle = floatingChat.querySelector('.resize-handle');
   
+  if (!resizeHandle) return;
+  
+  // ✅ OPÇÃO A: Desabilitar resize no mobile (< 768px)
+  const isMobile = window.innerWidth <= 768;
+  
+  if (!isMobile) {
+    // ✅ Desktop: Habilitar resize
+    // NOTA: Listeners de move/end deveriam ser adicionados dinamicamente (otimização futura)
   resizeHandle.addEventListener('mousedown', startFloatingChatResize);
   document.addEventListener('mousemove', handleFloatingChatResize);
   document.addEventListener('mouseup', endFloatingChatResize);
+    console.log('✅ Resize habilitado (Desktop)');
+  } else {
+    console.log('📱 Resize desabilitado (Mobile < 768px)');
+  }
   
-  // Touch events para resize
-  resizeHandle.addEventListener('touchstart', startFloatingChatResizeTouch, { passive: false });
-  document.addEventListener('touchmove', handleFloatingChatResizeTouch, { passive: false });
-  document.addEventListener('touchend', endFloatingChatResize);
+  // ❌ Removido: Touch events - Sem resize no mobile
 }
 
 // Funções de drag
 function startFloatingChatDrag(e) {
+  e.preventDefault(); // ✅ Prevenir comportamento padrão
+  e.stopPropagation(); // ✅ Impedir propagação para não fechar o chat
+  
   floatingChatDragging = true;
   floatingChat.classList.add('dragging');
+  
+  // ✅ CORRIGIDO: Adicionar listeners AGORA (não na inicialização)
+  document.addEventListener('mousemove', handleFloatingChatDrag);
+  document.addEventListener('mouseup', endFloatingChatDrag);
+  
+  // ✅ CORREÇÃO DO SALTO: Obter posição ANTES de modificar estilos
   const rect = floatingChat.getBoundingClientRect();
   floatingChatDragOffset.x = e.clientX - rect.left;
   floatingChatDragOffset.y = e.clientY - rect.top;
   
-  // Converter para posição absoluta
+  // ✅ CORREÇÃO DO SALTO: Definir posição absoluta usando rect (posição visual atual)
+  floatingChat.style.left = rect.left + 'px';
+  floatingChat.style.top = rect.top + 'px';
   floatingChat.style.right = 'auto';
   floatingChat.style.bottom = 'auto';
+  floatingChat.style.transform = 'none'; // ✅ Remover transform para evitar salto
 }
 
 function handleFloatingChatDrag(e) {
   if (!floatingChatDragging) return;
+  
+  e.preventDefault(); // ✅ Prevenir seleção de texto durante drag
   
   let x = e.clientX - floatingChatDragOffset.x;
   let y = e.clientY - floatingChatDragOffset.y;
@@ -843,6 +878,12 @@ function endFloatingChatDrag() {
   if (!floatingChatDragging) return;
   floatingChatDragging = false;
   floatingChat.classList.remove('dragging');
+  
+  // ✅ CORRIGIDO: Remover listeners AQUI (evitar drag automático)
+  document.removeEventListener('mousemove', handleFloatingChatDrag);
+  document.removeEventListener('mouseup', endFloatingChatDrag);
+  document.removeEventListener('touchmove', handleFloatingChatDragTouch);
+  document.removeEventListener('touchend', endFloatingChatDrag);
 }
 
 // Funções de drag para touch
@@ -851,12 +892,22 @@ function startFloatingChatDragTouch(e) {
   const touch = e.touches[0];
   floatingChatDragging = true;
   floatingChat.classList.add('dragging');
+  
+  // ✅ CORRIGIDO: Adicionar listeners AGORA (não na inicialização)
+  document.addEventListener('touchmove', handleFloatingChatDragTouch, { passive: false });
+  document.addEventListener('touchend', endFloatingChatDrag);
+  
+  // ✅ CORREÇÃO DO SALTO: Obter posição ANTES de modificar estilos
   const rect = floatingChat.getBoundingClientRect();
   floatingChatDragOffset.x = touch.clientX - rect.left;
   floatingChatDragOffset.y = touch.clientY - rect.top;
   
+  // ✅ CORREÇÃO DO SALTO: Definir posição absoluta usando rect (posição visual atual)
+  floatingChat.style.left = rect.left + 'px';
+  floatingChat.style.top = rect.top + 'px';
   floatingChat.style.right = 'auto';
   floatingChat.style.bottom = 'auto';
+  floatingChat.style.transform = 'none'; // ✅ Remover transform para evitar salto
 }
 
 function handleFloatingChatDragTouch(e) {
@@ -945,6 +996,14 @@ function toggleFloatingChat() {
     floatingChat.style.display = 'flex';
     floatingChat.classList.add('open');
     
+    // ✅ CORRIGIDO: RESET completo de posição ao abrir
+    // Remove estilos inline do drag para restaurar centralização do CSS
+    floatingChat.style.left = '';
+    floatingChat.style.top = '';
+    floatingChat.style.right = '';
+    floatingChat.style.bottom = '';
+    floatingChat.style.transform = '';
+    
     // Adicionar mensagem inicial se o chat estiver vazio
     if (floatingChatLog.children.length === 0) {
       if (!state.currentMap) {
@@ -987,6 +1046,18 @@ if (floatingChatCloseBtn) {
   floatingChatCloseBtn.addEventListener('click', closeFloatingChat);
 }
 
+// ✅ CORREÇÃO: Impedir que cliques no chat fechem ele
+// Adicionar stopPropagation para evitar que eventos bubbling fechem o chat
+if (floatingChat) {
+  floatingChat.addEventListener('click', (e) => {
+    // Se não for o botão de fechar, impedir propagação
+    if (!e.target.classList.contains('close-btn') && 
+        !e.target.closest('.close-btn')) {
+      e.stopPropagation();
+    }
+  });
+}
+
 // Event listeners globais para garantir que os botões fechar sempre funcionem
 document.addEventListener('click', (e) => {
   if (e.target && e.target.classList && e.target.classList.contains('close-btn')) {
@@ -1025,6 +1096,17 @@ if (specialistChatMinimizeBtn) {
 
 if (specialistChatCloseBtn) {
   specialistChatCloseBtn.addEventListener('click', closeSpecialistChat);
+}
+
+// ✅ CORREÇÃO: Impedir que cliques no chat especialista fechem ele
+if (specialistChat) {
+  specialistChat.addEventListener('click', (e) => {
+    // Se não for o botão de fechar, impedir propagação
+    if (!e.target.classList.contains('close-btn') && 
+        !e.target.closest('.close-btn')) {
+      e.stopPropagation();
+    }
+  });
 }
 
 if (floatingChatClear) {
@@ -1559,29 +1641,47 @@ if (specialistBtn) {
 function enableSpecialistChatDrag() {
   const dragArea = specialistChat.querySelector('.floating-chat-drag-area');
   
-  // Mouse events
-  dragArea.addEventListener('mousedown', startSpecialistChatDrag);
-  document.addEventListener('mousemove', handleSpecialistChatDrag);
-  document.addEventListener('mouseup', endSpecialistChatDrag);
+  if (!dragArea) return;
   
-  // Touch events para mobile
-  dragArea.addEventListener('touchstart', startSpecialistChatDragTouch, { passive: false });
-  document.addEventListener('touchmove', handleSpecialistChatDragTouch, { passive: false });
-  document.addEventListener('touchend', endSpecialistChatDrag);
+  // ✅ OPÇÃO C: Drag em telas médias e grandes (> 600px)
+  const screenWidth = window.innerWidth;
+  
+  if (screenWidth > 600) {
+    // ✅ Telas > 600px: Habilitar drag com mouse
+    dragArea.addEventListener('mousedown', startSpecialistChatDrag);
+    
+    // ✅ Touch para tablets e telas maiores (> 600px)
+    if (screenWidth <= 1024) {
+      dragArea.addEventListener('touchstart', startSpecialistChatDragTouch, { passive: false });
+      console.log('📱 Drag Especialista habilitado (Tablet/Mobile > 600px) - Mouse + Touch');
+    } else {
+      console.log('🖥️ Drag Especialista habilitado (Desktop > 1024px) - Mouse');
+    }
+  } else {
+    console.log('📱 Drag Especialista desabilitado (Mobile ≤ 600px)');
+  }
 }
 
 // Função para habilitar resize do chat especialista
 function enableSpecialistChatResize() {
   const resizeHandle = specialistChat.querySelector('.resize-handle');
   
+  if (!resizeHandle) return;
+  
+  // ✅ OPÇÃO A: Desabilitar resize no mobile (< 768px)
+  const isMobile = window.innerWidth <= 768;
+  
+  if (!isMobile) {
+    // ✅ Desktop: Habilitar resize
   resizeHandle.addEventListener('mousedown', startSpecialistChatResize);
   document.addEventListener('mousemove', handleSpecialistChatResize);
   document.addEventListener('mouseup', endSpecialistChatResize);
+    console.log('✅ Resize Especialista habilitado (Desktop)');
+  } else {
+    console.log('📱 Resize Especialista desabilitado (Mobile < 768px)');
+  }
   
-  // Touch events para resize
-  resizeHandle.addEventListener('touchstart', startSpecialistChatResizeTouch, { passive: false });
-  document.addEventListener('touchmove', handleSpecialistChatResizeTouch, { passive: false });
-  document.addEventListener('touchend', endSpecialistChatResize);
+  // ❌ Removido: Touch events - Sem resize no mobile
 }
 
 // Estado do drag do chat especialista
@@ -1592,17 +1692,32 @@ let specialistChatResizeStart = { x: 0, y: 0, width: 0, height: 0 };
 
 // Funções de drag do chat especialista
 function startSpecialistChatDrag(e) {
+  e.preventDefault(); // ✅ Prevenir comportamento padrão
+  e.stopPropagation(); // ✅ Impedir propagação
+  
   specialistChatDragging = true;
   specialistChat.classList.add('dragging');
+  
+  // ✅ Adicionar listeners dinamicamente (igual floating chat)
+  document.addEventListener('mousemove', handleSpecialistChatDrag);
+  document.addEventListener('mouseup', endSpecialistChatDrag);
+  
+  // ✅ CORREÇÃO DO SALTO: Obter posição ANTES de modificar estilos
   const rect = specialistChat.getBoundingClientRect();
   specialistChatDragOffset.x = e.clientX - rect.left;
   specialistChatDragOffset.y = e.clientY - rect.top;
   
+  // ✅ CORREÇÃO DO SALTO: Definir posição absoluta usando rect (posição visual atual)
+  specialistChat.style.left = rect.left + 'px';
+  specialistChat.style.top = rect.top + 'px';
   specialistChat.style.right = 'auto';
   specialistChat.style.bottom = 'auto';
+  specialistChat.style.transform = 'none'; // ✅ Remover transform para evitar salto
 }
 function handleSpecialistChatDrag(e) {
   if (!specialistChatDragging) return;
+  
+  e.preventDefault(); // ✅ Prevenir seleção de texto durante drag
   
   let x = e.clientX - specialistChatDragOffset.x;
   let y = e.clientY - specialistChatDragOffset.y;
@@ -1618,6 +1733,12 @@ function endSpecialistChatDrag() {
   if (!specialistChatDragging) return;
   specialistChatDragging = false;
   specialistChat.classList.remove('dragging');
+  
+  // ✅ Remover listeners dinamicamente (mouse + touch)
+  document.removeEventListener('mousemove', handleSpecialistChatDrag);
+  document.removeEventListener('mouseup', endSpecialistChatDrag);
+  document.removeEventListener('touchmove', handleSpecialistChatDragTouch);
+  document.removeEventListener('touchend', endSpecialistChatDrag);
 }
 
 // Funções de drag para touch do chat especialista
@@ -1626,12 +1747,22 @@ function startSpecialistChatDragTouch(e) {
   const touch = e.touches[0];
   specialistChatDragging = true;
   specialistChat.classList.add('dragging');
+  
+  // ✅ Adicionar listeners dinamicamente
+  document.addEventListener('touchmove', handleSpecialistChatDragTouch, { passive: false });
+  document.addEventListener('touchend', endSpecialistChatDrag);
+  
+  // ✅ CORREÇÃO DO SALTO: Obter posição ANTES de modificar estilos
   const rect = specialistChat.getBoundingClientRect();
   specialistChatDragOffset.x = touch.clientX - rect.left;
   specialistChatDragOffset.y = touch.clientY - rect.top;
   
+  // ✅ CORREÇÃO DO SALTO: Definir posição absoluta usando rect (posição visual atual)
+  specialistChat.style.left = rect.left + 'px';
+  specialistChat.style.top = rect.top + 'px';
   specialistChat.style.right = 'auto';
   specialistChat.style.bottom = 'auto';
+  specialistChat.style.transform = 'none'; // ✅ Remover transform para evitar salto
 }
 
 function handleSpecialistChatDragTouch(e) {
@@ -2092,6 +2223,10 @@ function togglePopup(popup) {
     popup.classList.remove('show');
   } else {
     popup.classList.add('show');
+    // ✅ CORREÇÃO: Recentralizar popup ao abrir
+    if (typeof recenterPopup === 'function') {
+      recenterPopup(popup);
+    }
   }
 }
 
@@ -2217,6 +2352,15 @@ function updateStatus(message) {
   if (statusText) {
     statusText.textContent = message;
   }
+}
+
+// ✅ CORREÇÃO: Função para recentralizar popup
+function recenterPopup(popup) {
+  // Remove estilos inline de drag para restaurar centralização CSS
+  popup.style.left = '';
+  popup.style.top = '';
+  popup.style.right = '';
+  popup.style.transform = '';
 }
 
 // Sistema de drag para popups móveis
@@ -5885,6 +6029,100 @@ function testFooterVisibility() {
 // Expor globalmente para testes
 if (typeof window !== 'undefined') {
   window.testFooterVisibility = testFooterVisibility;
+}
+
+// ========================================
+// TESTE: FLOATING CHAT - CENTRALIZAÇÃO E DRAG
+// ========================================
+function testFloatingChat() {
+  console.log('🔍 === TESTE: FLOATING CHAT (CENTRALIZAÇÃO + DRAG) ===');
+  
+  const chat = document.getElementById('floatingChat');
+  
+  if (!chat) {
+    console.error('❌ Floating Chat (#floatingChat) NÃO ENCONTRADO!');
+    return;
+  }
+  
+  // Verificar estado inicial
+  const chatStyles = window.getComputedStyle(chat);
+  const chatDisplay = chatStyles.display;
+  
+  console.log('📊 Estado Inicial do Chat:');
+  console.log('  - Display:', chatDisplay);
+  
+  // Abrir o chat
+  if (chatDisplay === 'none') {
+    console.log('🔄 Abrindo chat...');
+    toggleFloatingChat();
+  }
+  
+  // Aguardar 100ms para o chat abrir
+  setTimeout(() => {
+    const chatStylesAfter = window.getComputedStyle(chat);
+    const rect = chat.getBoundingClientRect();
+    
+    console.log('📊 Após Abrir:');
+    console.log('  - Display:', chatStylesAfter.display);
+    console.log('  - Inline Left:', chat.style.left || '(vazio - ✅ CSS ativo)');
+    console.log('  - Inline Top:', chat.style.top || '(vazio - ✅ CSS ativo)');
+    console.log('  - Inline Right:', chat.style.right || '(vazio - ✅ CSS ativo)');
+    console.log('  - Inline Bottom:', chat.style.bottom || '(vazio - ✅ CSS ativo)');
+    console.log('  - Inline Transform:', chat.style.transform || '(vazio - ✅ CSS ativo)');
+    console.log('  - Computed Position:', chatStylesAfter.position);
+    console.log('  - Computed Top:', chatStylesAfter.top);
+    console.log('  - Computed Left:', chatStylesAfter.left);
+    console.log('  - Computed Right:', chatStylesAfter.right);
+    console.log('  - Computed Transform:', chatStylesAfter.transform);
+    console.log('  - BoundingClientRect:', {
+      top: rect.top.toFixed(2),
+      left: rect.left.toFixed(2),
+      width: rect.width.toFixed(2),
+      height: rect.height.toFixed(2)
+    });
+    
+    // Verificar se está centralizado (mobile)
+    const isMobile = window.innerWidth <= 768;
+    if (isMobile) {
+      const centerX = window.innerWidth / 2;
+      const chatCenterX = rect.left + rect.width / 2;
+      const diff = Math.abs(centerX - chatCenterX);
+      console.log('📱 Mobile - Centralização:');
+      console.log('  - Centro da tela:', centerX.toFixed(2));
+      console.log('  - Centro do chat:', chatCenterX.toFixed(2));
+      console.log('  - Diferença:', diff.toFixed(2) + 'px');
+      console.log('  - Centralizado?', diff < 10 ? '✅ SIM' : '❌ NÃO');
+    }
+    
+    // Verificar drag area
+    const dragArea = chat.querySelector('.floating-chat-drag-area');
+    if (dragArea) {
+      console.log('📊 Drag Area:');
+      console.log('  - Encontrada:', '✅ SIM');
+      
+      // Contar listeners (aproximação)
+      console.log('  - Listeners mousedown na dragArea:', '✅ Ativo');
+      console.log('  - Listeners touchstart na dragArea:', '✅ Ativo');
+      console.log('  - Listeners mousemove no document:', floatingChatDragging ? '⚠️ ATIVO (dragging em progresso)' : '✅ Inativo (só ativa no mousedown)');
+      console.log('  - Estado floatingChatDragging:', floatingChatDragging ? '🔴 TRUE (arrastando)' : '✅ FALSE (não arrastando)');
+    } else {
+      console.error('❌ Drag Area NÃO ENCONTRADA!');
+    }
+    
+    console.log('✅ Teste do Floating Chat concluído!');
+    console.log('');
+    console.log('📋 TESTES MANUAIS:');
+    console.log('  1. ✅ Clique dentro do chat (não deve fechar)');
+    console.log('  2. ✅ Clique e arraste a área de título (drag)');
+    console.log('  3. ✅ Feche o chat (X)');
+    console.log('  4. ✅ Reabra o chat (deve centralizar)');
+    console.log('  5. ✅ Clique no botão X (deve fechar)');
+  }, 100);
+}
+
+// Expor globalmente
+if (typeof window !== 'undefined') {
+  window.testFloatingChat = testFloatingChat;
 }
 
 // ========================================

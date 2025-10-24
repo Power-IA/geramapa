@@ -354,6 +354,28 @@
     </a>
   </div>
 
+  <!-- WhatsApp Invite Popup (always on start) - Modal centralizado -->
+  <div id="whatsInvitePopup" class="whatsapp-invite hidden" role="dialog" aria-live="polite" aria-label="Convite WhatsApp">
+    <div class="wi-overlay"></div>
+    <div class="wi-modal">
+      <div class="wi-header">
+        <span class="wi-logo">💬</span>
+        <h3 class="wi-title">Junte-se ao Grupo!</h3>
+      </div>
+      <div class="wi-body">
+        <p class="wi-text">Entre no nosso grupo do WhatsApp para receber feedback, novidades e atualizações do GeraMapa.</p>
+        <div class="wi-icon-large">📱</div>
+      </div>
+      <div class="wi-footer">
+        <a id="whatsInviteBtn" class="wi-btn primary" href="https://toque-aqui.com/ja/geragrupo" target="_blank" rel="noopener noreferrer">
+          <span class="wi-btn-icon">✓</span>
+          Entrar no Grupo
+        </a>
+        <button id="whatsInviteClose" class="wi-btn secondary">Agora não</button>
+      </div>
+    </div>
+  </div>
+
   <script src="./app.js"></script>
 </body>
 </html>

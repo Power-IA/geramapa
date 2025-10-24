@@ -798,7 +798,6 @@ function enableFloatingChatDrag() {
   document.addEventListener('touchmove', handleFloatingChatDragTouch, { passive: false });
   document.addEventListener('touchend', endFloatingChatDrag);
 }
-
 // Função para habilitar resize do chat flutuante
 function enableFloatingChatResize() {
   const resizeHandle = floatingChat.querySelector('.resize-handle');
@@ -1599,7 +1598,6 @@ function startSpecialistChatDrag(e) {
   specialistChat.style.right = 'auto';
   specialistChat.style.bottom = 'auto';
 }
-
 function handleSpecialistChatDrag(e) {
   if (!specialistChatDragging) return;
   
@@ -2387,7 +2385,6 @@ document.addEventListener('click', (e) => {
     switchTab(tab);
   }
 });
-
 function switchTab(tabName) {
   // Remover ativo de todas as tabs
   document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -2820,7 +2817,6 @@ async function showTooltipForNode(node, anchorEl, mapJson) {
       }
     });
   }
-  
   // Expand (full page) behavior: generate full markdown page via LLM and open slider
   const expandBtn = tooltip.querySelector('.expand-node');
   if (expandBtn) {
@@ -3623,7 +3619,6 @@ async function showTooltipForNode(node, anchorEl, mapJson) {
     });
   }
 }
-
 // Função para posicionar tooltip de forma responsiva
 function positionTooltipResponsively(tooltip, anchorEl) {
   const tooltipRect = tooltip.getBoundingClientRect();
@@ -4342,7 +4337,6 @@ function renderScriptModelSelector(targetElement, nodeLabel, mapTitle, renderMd)
         });
     });
 }
-
 /**
  * Generates and displays the short script content based on the chosen model.
  */
@@ -5140,7 +5134,6 @@ function setNodeStyleData(nodeId, key, value) {
   n._style = n._style || {};
   n._style[key] = value;
 }
-
 /* remove stored style keys */
 function removeNodeStyleData(nodeId, keys = []) {
   const n = window.findNodeById(state.currentMap.nodes[0], nodeId);
@@ -5764,6 +5757,54 @@ enablePopupDrag();
 
 } // End of initApp function
 
+// ✅ WhatsApp invite popup logic (GLOBAL SCOPE)
+let whatsInviteTimer = null;
+function openWhatsInvitePopup() {
+  const el = document.getElementById('whatsInvitePopup');
+  if (!el) return;
+  el.classList.remove('hidden');
+  el.classList.add('show');
+  if (whatsInviteTimer) clearTimeout(whatsInviteTimer);
+  whatsInviteTimer = setTimeout(() => {
+    closeWhatsInvitePopup();
+  }, 120000);
+}
+function closeWhatsInvitePopup() {
+  const el = document.getElementById('whatsInvitePopup');
+  if (!el) return;
+  el.classList.remove('show');
+  el.classList.add('hidden');
+  if (whatsInviteTimer) {
+    clearTimeout(whatsInviteTimer);
+    whatsInviteTimer = null;
+  }
+}
+function initWhatsInvitePopup() {
+  const btn = document.getElementById('whatsInviteBtn');
+  const closeBtn = document.getElementById('whatsInviteClose');
+  const overlay = document.querySelector('.wi-overlay');
+  
+  if (btn) {
+    btn.addEventListener('click', () => {
+      closeWhatsInvitePopup();
+    }, { passive: true });
+  }
+  
+  if (closeBtn) {
+    closeBtn.addEventListener('click', () => {
+      closeWhatsInvitePopup();
+    });
+  }
+  
+  if (overlay) {
+    overlay.addEventListener('click', () => {
+      closeWhatsInvitePopup();
+    });
+  }
+  
+  setTimeout(openWhatsInvitePopup, 300);
+}
+
 // ========================================
 // FUNÇÃO DE DELETAR NÓ COM FECHAMENTO DE POPUP
 // ========================================
@@ -5890,7 +5931,6 @@ function hasStoredContent(nodeLabel, tabName) {
     return false;
   }
 }
-
 // ✅ FUNÇÃO DE TESTE PARA VERIFICAR DOWNLOADS
 function testAllDownloads() {
   console.log('🧪 TESTANDO TODOS OS PONTOS DE DOWNLOAD...');
@@ -6648,10 +6688,8 @@ function testConsoleWarningsFix() {
     alert(`❌ ERRO DETECTADO:\n\n${error.message}\n\nVerifique o console para detalhes.`);
   }
 }
-
 // ✅ EXPORTA FUNÇÃO DE TESTE DOS AVISOS DO CONSOLE
 window.testConsoleWarningsFix = testConsoleWarningsFix;
-
 // ✅ FUNÇÃO DE TESTE PARA VERIFICAR CORREÇÃO DO ÍCONE "i" E AUTO-ORGANIZAÇÃO
 function testIconAndAutoOrgFix() {
   console.log('🧪 TESTANDO CORREÇÃO DO ÍCONE "i" E AUTO-ORGANIZAÇÃO...');
@@ -7322,7 +7360,7 @@ function initCoffeeIcon() {
       
       console.log('❌ Botões específicos: modelos, marcador e lápis OCULTOS');
     }
-  }
+}
 
 // Initialize app when DOM is loaded with extension safety
 if (typeof window !== 'undefined') {
@@ -7333,6 +7371,8 @@ if (typeof window !== 'undefined') {
       initCoffeeIcon();
       // ✅ CORREÇÃO: Atualizar estado do menu mobile
       updateMobileMenuState();
+      // ✅ Inicializar popup de convite do WhatsApp
+      initWhatsInvitePopup();
     } catch (error) {
       console.error('Failed to initialize app:', error);
     }

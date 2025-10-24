@@ -1255,6 +1255,9 @@ async function handleFloatingChatSend() {
     
     // ✅ CORREÇÃO: Atualizar estado do menu mobile
     updateMobileMenuState();
+    
+    // 🧪 AUTO-TESTE: Verificar visibilidade do footer no mobile
+    autoTestFooterOnMap();
       
       // Mostrar chat especialista automaticamente
       showSpecialistChat();
@@ -5801,6 +5804,108 @@ function initWhatsInvitePopup() {
   // NÃO fecha ao clicar no overlay (fundo escuro)
   
   setTimeout(openWhatsInvitePopup, 300);
+}
+
+// ========================================
+// TESTE: VISIBILIDADE DO FOOTER NO MOBILE
+// ========================================
+function testFooterVisibility() {
+  console.log('🔍 === TESTE: FOOTER (DISQUETE E LIXEIRA) ===');
+  
+  const footer = document.querySelector('.app-status');
+  const saveBtn = document.getElementById('saveMapBtn');
+  const deleteBtn = document.getElementById('deleteMapBtn');
+  
+  if (!footer) {
+    console.error('❌ Footer (.app-status) NÃO ENCONTRADO!');
+    return;
+  }
+  
+  if (!saveBtn) {
+    console.error('❌ Botão Salvar (#saveMapBtn) NÃO ENCONTRADO!');
+    return;
+  }
+  
+  if (!deleteBtn) {
+    console.error('❌ Botão Deletar (#deleteMapBtn) NÃO ENCONTRADO!');
+    return;
+  }
+  
+  // Verificar se o footer está visível
+  const footerStyles = window.getComputedStyle(footer);
+  const footerDisplay = footerStyles.display;
+  const footerVisibility = footerStyles.visibility;
+  const footerOpacity = footerStyles.opacity;
+  const footerHeight = footerStyles.height;
+  const footerBottom = footer.getBoundingClientRect().bottom;
+  const windowHeight = window.innerHeight;
+  
+  console.log('📊 Footer (.app-status):');
+  console.log('  - Display:', footerDisplay);
+  console.log('  - Visibility:', footerVisibility);
+  console.log('  - Opacity:', footerOpacity);
+  console.log('  - Height:', footerHeight);
+  console.log('  - Bottom position:', footerBottom);
+  console.log('  - Window height:', windowHeight);
+  console.log('  - Footer visível na tela?', footerBottom <= windowHeight ? '✅ SIM' : '❌ NÃO (cortado)');
+  
+  // Verificar botões
+  const saveBtnStyles = window.getComputedStyle(saveBtn);
+  const deleteBtnStyles = window.getComputedStyle(deleteBtn);
+  
+  console.log('📊 Botão Salvar (#saveMapBtn):');
+  console.log('  - Display:', saveBtnStyles.display);
+  console.log('  - Visibility:', saveBtnStyles.visibility);
+  console.log('  - Opacity:', saveBtnStyles.opacity);
+  console.log('  - Width x Height:', saveBtnStyles.width, 'x', saveBtnStyles.height);
+  
+  console.log('📊 Botão Deletar (#deleteMapBtn):');
+  console.log('  - Display:', deleteBtnStyles.display);
+  console.log('  - Visibility:', deleteBtnStyles.visibility);
+  console.log('  - Opacity:', deleteBtnStyles.opacity);
+  console.log('  - Width x Height:', deleteBtnStyles.width, 'x', deleteBtnStyles.height);
+  console.log('  - Disabled?', deleteBtn.disabled ? '🔒 SIM' : '✅ NÃO');
+  
+  // Verificar z-index
+  console.log('📊 Z-Index:');
+  console.log('  - Footer:', footerStyles.zIndex);
+  
+  // Verificar se há elementos sobrepondo
+  const footerRect = footer.getBoundingClientRect();
+  const centerX = footerRect.left + footerRect.width / 2;
+  const centerY = footerRect.top + footerRect.height / 2;
+  const elementAtCenter = document.elementFromPoint(centerX, centerY);
+  
+  console.log('📊 Elemento no centro do footer:', elementAtCenter?.tagName, elementAtCenter?.className);
+  console.log('  - É o próprio footer?', elementAtCenter === footer || footer.contains(elementAtCenter) ? '✅ SIM' : '❌ NÃO (sobreposto)');
+  
+  console.log('✅ Teste de visibilidade do footer concluído!');
+}
+
+// Expor globalmente para testes
+if (typeof window !== 'undefined') {
+  window.testFooterVisibility = testFooterVisibility;
+}
+
+// ========================================
+// AUTO-TESTE: FOOTER AO GERAR MAPA
+// ========================================
+// Executar teste automaticamente quando um mapa for gerado
+let footerTestExecuted = false;
+
+function autoTestFooterOnMap() {
+  if (footerTestExecuted) return;
+  
+  // Aguardar 2 segundos após o mapa ser gerado
+  setTimeout(() => {
+    if (state.currentMap) {
+      console.log('🤖 === AUTO-TESTE: FOOTER NO MOBILE ===');
+      console.log('📱 Dispositivo:', /Mobile|Android|iPhone|iPad/i.test(navigator.userAgent) ? 'Mobile' : 'Desktop');
+      console.log('📏 Largura da tela:', window.innerWidth + 'px');
+      testFooterVisibility();
+      footerTestExecuted = true;
+    }
+  }, 2000);
 }
 
 // ========================================

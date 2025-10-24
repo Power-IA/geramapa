@@ -118,3 +118,4 @@ A ordem dos ícones está **CORRETA** e **FUNCIONANDO**:
 - ✅ Todos os ícones aparecem quando há mapa
 - ✅ Menu é responsivo com scroll horizontal
 - ✅ Comportamento correto em mobile e desktop
+

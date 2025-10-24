@@ -14,6 +14,19 @@
     overflow: hidden;
   }
   
+  /* ✅ CORREÇÃO: Ajustar grid para mobile garantindo visibilidade do footer */
+  @media (max-width: 768px) {
+    .app-grid {
+      grid-template-rows: 60px 1fr 50px; /* ✅ Footer com 50px no mobile */
+    }
+  }
+  
+  @media (max-width: 480px) {
+    .app-grid {
+      grid-template-rows: 60px 1fr 48px; /* ✅ Footer com 48px em telas pequenas */
+    }
+  }
+  
   /* Header Fixo */
   .app-header {
     grid-area: header;
@@ -141,6 +154,8 @@
     border-top: 1px solid var(--border);
     font-size: 12px;
     color: var(--muted);
+    z-index: 90; /* ✅ Garantir que footer fique acima de outros elementos */
+    position: relative;
   }
   
   .status-info {
@@ -169,8 +184,14 @@
   
   /* ✅ CORREÇÃO: Garantir visibilidade e responsividade dos botões de ação no mobile */
   @media (max-width: 768px) {
+    .app-status {
+      padding: 0 12px;
+      min-height: 50px; /* ✅ Altura mínima para garantir visibilidade */
+      z-index: 95; /* ✅ Aumentar z-index no mobile */
+    }
+    
     .status-actions {
-      display: flex;
+      display: flex !important; /* ✅ Forçar exibição */
       gap: 6px;
       flex-shrink: 0;
     }
@@ -180,7 +201,7 @@
       font-size: 16px;
       min-width: 44px;
       min-height: 44px;
-      display: flex;
+      display: flex !important; /* ✅ Forçar exibição */
       align-items: center;
       justify-content: center;
       touch-action: manipulation;
@@ -194,8 +215,14 @@
   }
   
   @media (max-width: 480px) {
+    .app-status {
+      padding: 0 10px;
+      min-height: 48px; /* ✅ Altura mínima para telas pequenas */
+    }
+    
     .status-actions {
       gap: 4px;
+      display: flex !important; /* ✅ Forçar exibição */
     }
     
     .status-btn {
@@ -203,6 +230,7 @@
       font-size: 14px;
       min-width: 40px;
       min-height: 40px;
+      display: flex !important; /* ✅ Forçar exibição */
     }
   }
   

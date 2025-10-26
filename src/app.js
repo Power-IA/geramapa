@@ -1656,7 +1656,19 @@ const specialistBtn = document.getElementById('specialistBtn');
 if (specialistBtn) {
   specialistBtn.addEventListener('click', () => {
     if (state.currentMap) {
-      showSpecialistChat();
+      // ✅ CORREÇÃO: Alternar entre abrir e fechar chat especialista
+      const isOpen = specialistChat.style.display === 'flex' && specialistChat.classList.contains('open');
+      
+      if (isOpen) {
+        // Chat está aberto - fechar
+        specialistChat.style.display = 'none';
+        specialistChat.classList.remove('open');
+        console.log('✅ Chat Especialista fechado');
+      } else {
+        // Chat está fechado - abrir
+        showSpecialistChat();
+        console.log('✅ Chat Especialista aberto');
+      }
     }
   });
 }
@@ -2971,7 +2983,7 @@ async function updateNodeSliderContent(node, mapJson) {
 async function updateTabContent(nodeSlider, node, mapJson, tabName, layoutModel, mode) {
   try {
     const target = nodeSlider.querySelector(`.tab-content[data-tab-content="${tabName}"]`);
-    const updateBtn = nodeSlider.querySelector(`.tab-update[data-tab="${tabName}"]`);
+    const updateBtn = nodeSlider.querySelector(`.tab-update-internal[data-tab="${tabName}"]`);
     const nodeLabel = node.data('label') || 'Nó sem título';
 
     if (!target || !updateBtn) return;
@@ -3017,7 +3029,7 @@ async function updateTabContent(nodeSlider, node, mapJson, tabName, layoutModel,
     console.error(`Erro ao atualizar aba ${tabName}:`, error);
 
     const target = nodeSlider.querySelector(`.tab-content[data-tab-content="${tabName}"]`);
-    const updateBtn = nodeSlider.querySelector(`.tab-update[data-tab="${tabName}"]`);
+    const updateBtn = nodeSlider.querySelector(`.tab-update-internal[data-tab="${tabName}"]`);
 
     if (target) {
       target.innerHTML = `<div class="hint" style="color: var(--accent);">Erro ao atualizar: ${error.message}</div>`;
@@ -3395,38 +3407,42 @@ async function showTooltipForNode(node, anchorEl, mapJson) {
         nodeSlider.querySelector('.node-slider-content').innerHTML = `
           <div class="node-tabs">
             <div class="node-tabs-header">
-              <div class="tab-with-action">
-                <button data-tab="normal" class="tab active">Normal</button>
-                <button class="tab-update" data-tab="normal" title="Atualizar conteúdo">🔄</button>
-              </div>
-              <div class="tab-with-action">
-                <button data-tab="tecnico" class="tab">Técnico</button>
-                <button class="tab-update" data-tab="tecnico" title="Atualizar conteúdo">🔄</button>
-              </div>
-              <div class="tab-with-action">
-                <button data-tab="leigo" class="tab">Leigo</button>
-                <button class="tab-update" data-tab="leigo" title="Atualizar conteúdo">🔄</button>
-              </div>
-              <div class="tab-with-action">
-                <button data-tab="palestra" class="tab">Palestra</button>
-                <button class="tab-update" data-tab="palestra" title="Atualizar conteúdo">🔄</button>
-              </div>
-              <div class="tab-with-action">
-                <button data-tab="roteiro" class="tab">Roteiro Curto</button>
-                <button class="tab-update" data-tab="roteiro" title="Atualizar conteúdo">🔄</button>
-              </div>
-              <div class="tab-with-action">
-                <button data-tab="exercicio" class="tab">Exercício</button>
-                <button class="tab-update" data-tab="exercicio" title="Atualizar conteúdo">🔄</button>
-              </div>
+              <button data-tab="normal" class="tab active">Normal</button>
+              <button data-tab="tecnico" class="tab">Técnico</button>
+              <button data-tab="leigo" class="tab">Leigo</button>
+              <button data-tab="palestra" class="tab">Palestra</button>
+              <button data-tab="roteiro" class="tab">Roteiro Curto</button>
+              <button data-tab="exercicio" class="tab">Exercício</button>
               <button id="downloadTabBtn" class="tab download-tab" title="Download conteúdo da aba ativa">📥</button>
             </div>
             <div class="node-tabs-body">
-              <div data-tab-content="normal" class="tab-content active">${normalHtml}</div>
-              <div data-tab-content="tecnico" class="tab-content" data-loading="0"><em>Carregue a aba Técnico para gerar conteúdo aprofundado...</em></div>
-              <div data-tab-content="leigo" class="tab-content" data-loading="0"><em>Carregue a aba Leigo para gerar explicação acessível...</em></div>
-              <div data-tab-content="palestra" class="tab-content" data-loading="0"><em>Carregue a aba Palestra para gerar roteiro em primeira pessoa...</em></div>
-              <div data-tab-content="roteiro" class="tab-content" data-loading="0"></div>
+              <div data-tab-content="normal" class="tab-content active">
+                <div class="tab-content-header">
+                  <button class="tab-update-internal" data-tab="normal" title="Atualizar conteúdo">🔄 Atualizar</button>
+                </div>
+                <div class="tab-content-body">${normalHtml}</div>
+              </div>
+              <div data-tab-content="tecnico" class="tab-content" data-loading="0">
+                <div class="tab-content-header">
+                  <button class="tab-update-internal" data-tab="tecnico" title="Atualizar conteúdo">🔄 Atualizar</button>
+                </div>
+                <div class="tab-content-body"><em>Carregue a aba Técnico para gerar conteúdo aprofundado...</em></div>
+              </div>
+              <div data-tab-content="leigo" class="tab-content" data-loading="0">
+                <div class="tab-content-header">
+                  <button class="tab-update-internal" data-tab="leigo" title="Atualizar conteúdo">🔄 Atualizar</button>
+                </div>
+                <div class="tab-content-body"><em>Carregue a aba Leigo para gerar explicação acessível...</em></div>
+              </div>
+              <div data-tab-content="palestra" class="tab-content" data-loading="0">
+                <div class="tab-content-header">
+                  <button class="tab-update-internal" data-tab="palestra" title="Atualizar conteúdo">🔄 Atualizar</button>
+                </div>
+                <div class="tab-content-body"><em>Carregue a aba Palestra para gerar roteiro em primeira pessoa...</em></div>
+              </div>
+              <div data-tab-content="roteiro" class="tab-content" data-loading="0">
+                <div class="tab-content-body"></div>
+              </div>
               <div data-tab-content="exercicio" class="tab-content" data-loading="0">
                 <div class="card" style="display:grid;gap:12px;align-items:end;grid-template-columns: repeat(auto-fit, minmax(180px,1fr));">
                   <div>
@@ -3469,6 +3485,20 @@ async function showTooltipForNode(node, anchorEl, mapJson) {
             </div>
           </div>
         `;
+        // ✅ LISTENERS PARA BOTÕES DE ATUALIZAR INTERNOS (dentro do conteúdo)
+        const updateButtons = nodeSlider.querySelectorAll('.tab-update-internal');
+        updateButtons.forEach(btn => {
+          btn.addEventListener('click', async (ev) => {
+            ev.preventDefault();
+            ev.stopPropagation();
+            ev.stopImmediatePropagation();
+            
+            const tabName = ev.target.dataset.tab;
+            console.log(`🔄 Atualizando aba interna: ${tabName}`);
+            await updateTabContent(nodeSlider, node, mapJson, tabName, layoutModel, mode);
+          });
+        });
+
         // tab switching logic
         const header = nodeSlider.querySelector('.node-tabs-header');
         header.addEventListener('click', async (ev) => {
@@ -3481,16 +3511,6 @@ async function showTooltipForNode(node, anchorEl, mapJson) {
             return false;
           }
 
-          // ✅ BOTÃO DE ATUALIZAR ABA
-          if (ev.target.classList.contains('tab-update')) {
-            ev.preventDefault();
-            ev.stopPropagation();
-            ev.stopImmediatePropagation();
-
-            const tabName = ev.target.dataset.tab;
-            await updateTabContent(nodeSlider, node, mapJson, tabName, layoutModel, mode);
-            return false;
-          }
 
           const btn = ev.target.closest('button[data-tab]');
           if (!btn) return;

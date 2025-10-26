@@ -4002,24 +4002,62 @@
   /* Tabs inside node-slider */
   .node-tabs { display:flex; flex-direction:column; gap:8px; } /* Reduzido gap de 12px para 8px */
   .node-tabs-header {
-    display:flex; gap:6px; align-items:center; padding-bottom:6px; border-bottom:1px solid var(--border);
+    display:flex; gap:6px; align-items:flex-start; padding-bottom:6px; border-bottom:1px solid var(--border);
     position: -webkit-sticky; position: sticky;
     top: 0;
     background: var(--bg);
     z-index: 120;
     margin: 0;
-    flex-wrap: nowrap; /* ✅ Evita quebra de linha das abas */
+    flex-wrap: wrap; /* ✅ CORREÇÃO: Permite quebra em múltiplas linhas */
     overflow-x: auto; /* ✅ Permite scroll horizontal se necessário */
     /* subtle shadow when content scrolls under it */
     box-shadow: 0 2px 8px rgba(0,0,0,0.04);
   }
   .node-tabs-header .tab {
-    background: transparent; border:1px solid var(--border); padding:6px 10px; border-radius:6px; cursor:pointer; font-weight:600; font-size:12px;
-    white-space: nowrap; /* ✅ Evita quebra de texto */
-    overflow: hidden; /* ✅ Esconde texto que não cabe */
-    text-overflow: ellipsis; /* ✅ Mostra "..." se texto for muito longo */
+    background: transparent; border:1px solid var(--border); padding:6px 12px; border-radius:6px; cursor:pointer; font-weight:600; font-size:12px;
+    white-space: normal; /* ✅ CORREÇÃO: Texto normal, pode quebrar linha */
+    letter-spacing: normal; /* ✅ CORREÇÃO: Espaçamento normal entre letras */
+    word-break: break-word; /* ✅ CORREÇÃO: Permitir quebra de palavras longas */
+    overflow: visible; /* ✅ Mostrar todo o texto */
     min-width: fit-content; /* ✅ Largura mínima baseada no conteúdo */
     flex-shrink: 0; /* ✅ Evita que as abas encolham demais */
+    line-height: 1.4; /* ✅ CORREÇÃO: Melhor legibilidade */
+  }
+  
+  /* ✅ NOVO: Estilo para header de conteúdo dentro das tabs */
+  .tab-content-header {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border, #ddd);
+    margin-bottom: 12px;
+    background: var(--bg, #f9f9f9);
+  }
+  
+  .tab-update-internal {
+    background: var(--accent, #007bff);
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 0.85em;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    font-weight: 600;
+  }
+  
+  .tab-update-internal:hover {
+    background: var(--accent-hover, #0056b3);
+  }
+  
+  .tab-update-internal:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  
+  .tab-content-body {
+    padding: 12px;
   }
   .node-tabs-header .tab.active { background: var(--accent); color:#fff; border-color: var(--accent); }
   .node-tabs-header .tab.download-tab { 

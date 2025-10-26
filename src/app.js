@@ -1602,6 +1602,30 @@ function toggleSpecialistButton() {
   }
 }
 
+// Função para controlar visibilidade do botão Modelos de Mapas
+function toggleMapModelsButton() {
+  const mapModelsBtn = document.getElementById('mapModelsBtn');
+  if (!mapModelsBtn) {
+    console.warn('⚠️ mapModelsBtn não encontrado no DOM');
+    return;
+  }
+  
+  if (state.currentMap) {
+    // Mostrar botão quando há mapa
+    mapModelsBtn.style.display = 'flex';
+    console.log('✅ Map Models Button: VISÍVEL');
+  } else {
+    // Esconder botão quando não há mapa
+    mapModelsBtn.style.display = 'none';
+    console.log('❌ Map Models Button: OCULTO');
+  }
+}
+
+// ✅ FUNÇÃO CENTRALIZADA: Detecção de mobile consistente
+function isMobileDevice() {
+  return window.innerWidth <= 768;
+}
+
 // Event listeners do chat especialista
 if (specialistChatSend) {
   specialistChatSend.addEventListener('click', handleSpecialistChatSend);
@@ -3319,6 +3343,14 @@ async function showTooltipForNode(node, anchorEl, mapJson) {
   if (expandBtn) {
     expandBtn.addEventListener('click', async () => {
       if (!state.currentMap) return;
+      
+      // ✅ CORREÇÃO: Fechar tooltip automaticamente ao abrir expansão
+      if (tooltip && currentTooltip === tooltip) {
+        tooltip.remove();
+        currentTooltip = null;
+        console.log('✅ Tooltip fechado automaticamente ao abrir Expansão');
+      }
+      
       // prepare detailed prompt for full page (ask for extended markdown with sections)
       const mapTitle = (mapJson && mapJson.title) ? mapJson.title : 'Mapa Mental';
       const nodeLabel = node.data('label') || '';
@@ -5077,25 +5109,58 @@ function showCollapsedListPopup(cyNode, collapsedKids) {
   const existingPopup = document.querySelector('.context-popup');
   if (existingPopup) existingPopup.remove();
   
+  // ✅ DETECTAR MOBILE vs DESKTOP
+  const isMobile = window.innerWidth <= 768;
+  
   const popup = document.createElement('div');
   popup.className = 'context-popup';
-  popup.style.cssText = `
-    position: fixed !important;
-    background: white !important;
-    border: 1px solid #ddd !important;
-    border-radius: 8px !important;
-    padding: 0 !important;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.15) !important;
-    z-index: 99999 !important;
-    min-width: 320px !important;
-    max-width: min(90vw, 450px) !important;
-    overflow: visible !important;
-    cursor: move !important;
-    user-select: none !important;
-    resize: both !important;
-    min-height: 200px !important;
-    max-height: none !important;
-  `;
+  
+  // ✅ APLICAR CONFIGURAÇÕES DIFERENTES PARA MOBILE vs DESKTOP
+  if (isMobile) {
+    // ✅ VERSÃO MOBILE: Layout otimizado, fixo e centralizado
+    popup.classList.add('context-popup-mobile'); // Classe especial para mobile
+    // ✅ CORREÇÃO CRÍTICA: Prevenir que o drag global do overlaysRoot interfira
+    popup.setAttribute('data-no-drag', 'true'); // Marcar para não arrastar
+    popup.style.cssText = `
+      position: fixed !important;
+      left: 50% !important;
+      top: 50% !important;
+      transform: translate(-50%, -50%) !important;
+      width: 90vw !important;
+      max-width: 400px !important;
+      max-height: 85vh !important;
+      background: white !important;
+      border: 1px solid #ddd !important;
+      border-radius: 12px !important;
+      padding: 0 !important;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.3) !important;
+      z-index: 99999 !important;
+      overflow-y: auto !important;
+      overflow-x: hidden !important;
+      user-select: text !important;
+      touch-action: pan-y !important;
+      cursor: default !important;
+    `;
+  } else {
+    // ✅ VERSÃO DESKTOP: Drag habilitado, posicionamento livre
+    popup.style.cssText = `
+      position: fixed !important;
+      background: white !important;
+      border: 1px solid #ddd !important;
+      border-radius: 8px !important;
+      padding: 0 !important;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.15) !important;
+      z-index: 99999 !important;
+      min-width: 320px !important;
+      max-width: min(90vw, 450px) !important;
+      overflow: visible !important;
+      cursor: move !important;
+      user-select: none !important;
+      resize: both !important;
+      min-height: 200px !important;
+      max-height: none !important;
+    `;
+  }
   
   // Criar seção de nós colapsados se existirem
   const collapsedSection = collapsedKids.length > 0 ? `
@@ -5267,19 +5332,10 @@ function showCollapsedListPopup(cyNode, collapsedKids) {
   // Posicionar popup de forma responsiva
   document.body.appendChild(popup);
   
-  // Posicionamento inteligente baseado no tamanho da tela
-  const bb = cyNode.renderedBoundingBox();
-  const isMobile = window.innerWidth <= 768;
-  
-  if (isMobile) {
-    // Em telas pequenas, centralizar o popup
-    popup.style.left = '50%';
-    popup.style.top = '50%';
-    popup.style.transform = 'translate(-50%, -50%)';
-    popup.style.maxWidth = '95vw';
-    popup.style.maxHeight = '90vh';
-  } else {
-    // Em telas grandes, posicionar próximo ao nó
+  // ✅ POSICIONAMENTO: No mobile já está centralizado via inline styles
+  // No desktop, posicionar próximo ao nó
+  if (!isMobile) {
+    const bb = cyNode.renderedBoundingBox();
     const popupWidth = 420;
     const popupHeight = 300;
     
@@ -5333,86 +5389,55 @@ function showCollapsedListPopup(cyNode, collapsedKids) {
   console.log('🎨 Popup criado:', { currentColor, currentFont, currentSize, currentShape });
   
   // Funcionalidade de arrastar (drag)
+  // ✅ CORREÇÃO: Variáveis apenas para desktop (mobile não arrasta)
   let isDragging = false;
   let dragOffset = { x: 0, y: 0 };
   
   const header = popup.querySelector('.popup-header');
   const closeBtn = popup.querySelector('.popup-close-x');
   
-  // Event listeners para arrastar
-  header.addEventListener('mousedown', (e) => {
-    if (e.target === closeBtn) return; // Não arrastar se clicou no X
-    isDragging = true;
-    const rect = popup.getBoundingClientRect();
-    dragOffset.x = e.clientX - rect.left;
-    dragOffset.y = e.clientY - rect.top;
-    header.style.cursor = 'grabbing';
-    e.preventDefault();
-  });
-  
-  document.addEventListener('mousemove', (e) => {
-    if (!isDragging) return;
-    
-    const newX = Math.max(0, Math.min(window.innerWidth - popup.offsetWidth, e.clientX - dragOffset.x));
-    const newY = Math.max(0, Math.min(window.innerHeight - popup.offsetHeight, e.clientY - dragOffset.y));
-    
-    popup.style.left = newX + 'px';
-    popup.style.top = newY + 'px';
-    e.preventDefault();
-  });
-  
-  document.addEventListener('mouseup', () => {
-    if (isDragging) {
-      isDragging = false;
-      header.style.cursor = 'move';
-    }
-  });
-  
-  // ✅ CORREÇÃO: Touch events para dispositivos móveis (sem interferir com botões)
-  let isTouchDragging = false;
-  let startTouch = null;
-  
-  header.addEventListener('touchstart', (e) => {
-    // ✅ CORREÇÃO: Não interferir com botões
-    if (e.target === closeBtn || e.target.closest('.popup-close')) {
-      return; // Deixar o botão funcionar normalmente
-    }
-    
-    const touch = e.touches[0];
-    const rect = popup.getBoundingClientRect();
-    dragOffset.x = touch.clientX - rect.left;
-    dragOffset.y = touch.clientY - rect.top;
-    startTouch = { x: touch.clientX, y: touch.clientY };
-    isTouchDragging = false;
-  });
-  
-  header.addEventListener('touchmove', (e) => {
-    if (!startTouch) return;
-    
-    const touch = e.touches[0];
-    const deltaX = Math.abs(touch.clientX - startTouch.x);
-    const deltaY = Math.abs(touch.clientY - startTouch.y);
-    
-    // ✅ CORREÇÃO: Só iniciar drag se movimento for significativo
-    if (deltaX > 10 || deltaY > 10) {
-      isTouchDragging = true;
-      
-    const newX = Math.max(0, Math.min(window.innerWidth - popup.offsetWidth, touch.clientX - dragOffset.x));
-    const newY = Math.max(0, Math.min(window.innerHeight - popup.offsetHeight, touch.clientY - dragOffset.y));
-    
-    popup.style.left = newX + 'px';
-    popup.style.top = newY + 'px';
-    e.preventDefault();
-    }
-  });
-  
-  header.addEventListener('touchend', (e) => {
-    if (isTouchDragging) {
+  // ✅ CORREÇÃO: Event listeners para arrastar APENAS NO DESKTOP
+  // No mobile, o popup é fixo e não deve ser arrastado
+  if (!isMobile) {
+    // Event listeners para arrastar (DESKTOP)
+    header.addEventListener('mousedown', (e) => {
+      if (e.target === closeBtn) return; // Não arrastar se clicou no X
+      isDragging = true;
+      const rect = popup.getBoundingClientRect();
+      dragOffset.x = e.clientX - rect.left;
+      dragOffset.y = e.clientY - rect.top;
+      header.style.cursor = 'grabbing';
       e.preventDefault();
-    }
-    startTouch = null;
-    isTouchDragging = false;
-  });
+    });
+    
+    document.addEventListener('mousemove', (e) => {
+      if (!isDragging) return;
+      
+      const newX = Math.max(0, Math.min(window.innerWidth - popup.offsetWidth, e.clientX - dragOffset.x));
+      const newY = Math.max(0, Math.min(window.innerHeight - popup.offsetHeight, e.clientY - dragOffset.y));
+      
+      popup.style.left = newX + 'px';
+      popup.style.top = newY + 'px';
+      e.preventDefault();
+    });
+    
+    document.addEventListener('mouseup', () => {
+      if (isDragging) {
+        isDragging = false;
+        header.style.cursor = 'move';
+      }
+    });
+  } else {
+    // ✅ MOBILE: Não adicionar listeners de drag (popup fixo)
+    console.log('📱 Popup MOBILE: Listeners de drag NÃO adicionados');
+    
+    // ✅ MOBILE: Popup FIXO, SEM drag, apenas scroll interno
+    header.style.touchAction = 'pan-y'; // Permitir scroll vertical interno
+    header.style.cursor = 'default'; // Não mostrar cursor de drag
+    header.style.userSelect = 'none'; // Prevenir seleção de texto no header
+    
+    console.log('📱 Popup MOBILE: Fixo centralizado, drag DESABILITADO');
+  }
   
   // Event listeners dos botões
   const applyBtn = popup.querySelector('.popup-apply');
@@ -5674,6 +5699,12 @@ let popupDragState = { active: false, target: null, offsetX: 0, offsetY: 0 };
 overlaysRoot.addEventListener('mousedown', (e) => {
   const p = e.target.closest && e.target.closest('.context-popup');
   if (!p) return;
+  
+  // ✅ CORREÇÃO CRÍTICA: Ignorar popups mobile e popups marcados como não-arrastáveis
+  if (p.hasAttribute('data-no-drag') || p.classList.contains('context-popup-mobile')) {
+    return; // Não arrastar popups mobile ou marcados
+  }
+  
   // ignore interactions with inputs/buttons inside popup
   if (e.target.closest('input,textarea,button')) return;
   popupDragState.active = true;

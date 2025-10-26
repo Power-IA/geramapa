@@ -1593,10 +1593,20 @@
       pointer-events: none;
     }
     
-    .header-nav {
-      overflow-x: auto;
-      padding-bottom: 4px;
-      scrollbar-width: none; /* Firefox */
+      .header-nav {
+        overflow-x: auto !important; /* ✅ MOBILE: Scroll horizontal deslizante */
+        overflow-y: hidden !important;
+        padding-bottom: 4px;
+        scrollbar-width: none; /* Firefox */
+        /* ✅ Permitir scroll suave e destravado */
+        -webkit-overflow-scrolling: touch; /* iOS smooth scrolling */
+        scroll-behavior: smooth; /* Scroll suave */
+        overscroll-behavior-x: contain; /* Evitar propagação do scroll */
+        overscroll-behavior-y: contain;
+        /* ✅ Permitir passar por todos os ícones */
+        scroll-padding: 8px;
+        min-width: 100%; /* Garantir que use toda largura disponível */
+        flex-wrap: nowrap; /* Não quebrar linha */
       -ms-overflow-style: none; /* IE/Edge */
       gap: 1px;
       flex: 1;
@@ -1634,13 +1644,20 @@
       max-width: 40px;
     }
     
-    .app-header.has-map .header-nav {
-      gap: 4px;
-      overflow-x: auto;
-      overflow-y: hidden;
-      flex: 1;
-      min-width: 0;
-    }
+      .app-header.has-map .header-nav {
+        gap: 4px;
+        overflow-x: auto !important; /* ✅ MOBILE: Permitir scroll horizontal */
+        overflow-y: hidden !important;
+        flex: 1;
+        min-width: 0;
+        /* ✅ Scroll deslizante e suave */
+        -webkit-overflow-scrolling: touch;
+        scroll-behavior: smooth;
+        overscroll-behavior-x: contain;
+        overscroll-behavior-y: contain;
+        scroll-padding: 8px;
+        flex-wrap: nowrap; /* Não quebrar linha, permitir scroll */
+      }
     
     .app-header.has-map .nav-btn {
       min-width: 50px;
@@ -2190,10 +2207,55 @@
     box-sizing: border-box;
   }
   .context-popup.dragging { cursor: grabbing; transform: scale(0.997); box-shadow: 0 12px 36px rgba(0,0,0,0.12); }
-  /* on small viewports make popups full-width by default but still draggable */
-  @media (max-width: 560px) {
-    .context-popup { left: 8px !important; right: 8px !important; width: calc(100% - 16px) !important; max-width: none; }
-    .context-popup.dragging { transform: none; } /* avoid small scale on mobile during drag */
+
+  /* ✅ VERSÃO MOBILE DO POPUP */
+  .context-popup-mobile {
+    /* ✅ CORREÇÃO: Sobrescrever estilos do .context-popup base */
+    touch-action: pan-y !important; /* Permitir scroll, bloquear drag */
+    cursor: default !important; /* Não mostrar cursor de drag */
+  }
+
+  /* ✅ Adicionar estilos extras para mobile se necessário */
+  @media (max-width: 768px) {
+    .context-popup-mobile .popup-header {
+      padding: 14px 20px !important;
+      font-size: 16px !important;
+      border-radius: 12px 12px 0 0 !important;
+    }
+    
+    .context-popup-mobile .popup-content {
+      padding: 20px !important;
+      max-height: calc(85vh - 60px) !important;
+    }
+    
+    .context-popup-mobile .emoji-grid {
+      grid-template-columns: repeat(6, 1fr) !important;
+      gap: 6px !important;
+    }
+    
+    .context-popup-mobile .emoji-btn {
+      font-size: 18px !important;
+      padding: 8px !important;
+    }
+    
+    .context-popup-mobile .popup-apply,
+    .context-popup-mobile .popup-cancel {
+      padding: 12px 24px !important;
+      font-size: 15px !important;
+    }
+  }
+  
+  /* Telas muito pequenas */
+  @media (max-width: 480px) {
+    .context-popup-mobile {
+      width: 95vw !important;
+      max-height: 90vh !important;
+    }
+    
+    .context-popup-mobile .emoji-grid {
+      grid-template-columns: repeat(5, 1fr) !important;
+      gap: 4px !important;
+    }
   }
   /* ensure popups are above overlays but under top-level modals */
   .context-popup { 

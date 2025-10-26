@@ -4807,14 +4807,33 @@ function applyLayoutPreset(name) {
 }
 
 
-/* Helper to generate English image prompt */
+/* Helper to generate English image prompt in JSON format */
 function generateImagePromptEnglish({ title, node, parents, children, desc }) {
-  // concise, descriptive prompt with style, composition, colors
-  const context = parents && parents.length ? `Context: ${parents.join(', ')}.` : '';
+  // ✅ CORREÇÃO: Gerar prompt em JSON com nome do nó, descrição visual e contexto
+  const nodeName = node || 'Untitled Node';
+  
+  // Descrição do conteúdo do resumo (primeira linha, em inglês)
+  const shortDesc = desc ? (desc.split('\n')[0] || '').replace(/[*_`]/g,'').trim() : '';
+  
+  // Contexto dos nós pais
+  const context = parents && parents.length ? `This node belongs to: ${parents.join(', ')}.` : '';
+  
+  // Elementos filhos
   const elements = children && children.length ? `Contains sub-elements: ${children.join(', ')}.` : '';
-  const shortDesc = desc ? ('Description: ' + (desc.split('\n')[0] || '').replace(/[*_`]/g,'')) : '';
-  // craft prompt
-  return `${node} — a visually striking illustration inspired by "${title}". ${shortDesc} ${context} ${elements} Render a high-detail, cinematic composition focused on clear silhouette and color harmony; use warm mid-tone highlights with complementary accents, soft natural lighting, shallow depth of field, crisp textures, and painterly yet realistic rendering. Style suggestions: dramatic editorial photography blended with digital painting, 3:4 portrait orientation, balanced negative space, vivid but tasteful palette, no text, high visual clarity — suitable for concept art or cover illustration.`;
+  
+  // Criar prompt visual em inglês
+  const visualDescription = shortDesc 
+    ? `${shortDesc}. ` 
+    : `${nodeName} from the mind map "${title}". `;
+  
+  const fullPrompt = `${visualDescription}${context}${elements} Render a visually striking illustration with high-detail, cinematic composition focused on clear silhouette and color harmony; use warm mid-tone highlights with complementary accents, soft natural lighting, shallow depth of field, crisp textures, and painterly yet realistic rendering. Style suggestions: dramatic editorial photography blended with digital painting, 3:4 portrait orientation, balanced negative space, vivid but tasteful palette, no text, high visual clarity — suitable for concept art or cover illustration.`;
+  
+  // Retornar JSON em inglês
+  return JSON.stringify({
+    nodeName: nodeName,
+    visualDescription: fullPrompt,
+    nodeLabel: nodeName
+  }, null, 2);
 }
 
 /* Attach image dataURL to node inside the map JSON by node id */

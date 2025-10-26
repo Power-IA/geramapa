@@ -28,6 +28,31 @@ window.Storage.GeraMapas = {
     return window.Storage.GeraMapas._listRaw().find(x => x.id === id) || null;
   },
   deleteMap(id) {
+    const mapToDelete = window.Storage.GeraMapas._listRaw().find(x => x.id === id);
+    
+    // ✅ CORREÇÃO: Limpar cache associado ao mapa deletado
+    if (mapToDelete) {
+      const mapTitle = mapToDelete.title || mapToDelete.data.title || '';
+      
+      // Buscar todos os resumos e filtrar os que pertencem a este mapa
+      const summaries = window.Storage.GeraMapas._listSummariesRaw();
+      const cleanedSummaries = summaries.filter(summary => {
+        // Extrair título do mapa do sumário através da chave
+        // Formato da chave: summary_{mapTitle}_{nodeLabel}
+        const keyParts = summary.key.split('_');
+        if (keyParts.length >= 2) {
+          const summaryMapTitle = keyParts.slice(1, -1).join('_'); // Tudo entre 'summary_' e último '_'
+          const cleanMapTitle = mapTitle.replace(/[^a-zA-Z0-9]/g, '_');
+          return summaryMapTitle !== cleanMapTitle;
+        }
+        return true; // Manter resumos com formato inválido
+      });
+      
+      // Salvar lista limpa
+      localStorage.setItem(KEY_SUMMARIES, JSON.stringify(cleanedSummaries));
+      console.log(`🗑️ Cache do mapa "${mapTitle}" limpo automaticamente`);
+    }
+    
     const list = window.Storage.GeraMapas._listRaw().filter(x => x.id !== id);
     localStorage.setItem(KEY_MAPS, JSON.stringify(list));
   },

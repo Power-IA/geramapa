@@ -61,6 +61,13 @@ window.MapEngine.initCy = function(container) {
       { selector: 'node[img]',
         style: {
           'background-image': 'data(img)',
+          'background-fit': 'cover',
+          'background-position': 'center center',
+          'background-repeat': 'no-repeat',
+          'background-opacity': 0.8,
+          'border-width': 2,
+          'border-style': 'solid',
+          'border-color': '#333',
         }
       },
       { selector: 'node[branch = "0"]', style: { 'border-color': '#2ecc71' } },

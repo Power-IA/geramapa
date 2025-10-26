@@ -223,112 +223,180 @@
     </div>
     <div class="popup-content">
       <div class="settings-tabs">
-        <button class="tab-btn active" data-tab="ai">IA</button>
-        <button class="tab-btn" data-tab="theme">Tema</button>
-        <button class="tab-btn" data-tab="layout">Layout</button>
+        <button class="tab-btn active" data-tab="ai">🤖 IA</button>
+        <button class="tab-btn" data-tab="theme">🎨 Tema</button>
+        <button class="tab-btn" data-tab="layout">📐 Layout</button>
         <button class="tab-btn" data-tab="storage">💾 Cache</button>
       </div>
       
+      <!-- ✅ ABA IA: Organizada e espaçada -->
       <div class="tab-content active" data-tab-content="ai">
-      <div class="card">
-        <label class="label">Provedor</label>
-        <select id="providerSelect">
-          <option value="groq">Groq</option>
-          <option value="openrouter">OpenRouter</option>
-        </select>
-      </div>
-      <div class="card">
-        <label class="label">API Key</label>
-        <input id="apiKeyInput" type="password" placeholder="Insira sua API Key" />
-        <button id="saveApiBtn" class="btn">Salvar API</button>
-        <p id="apiStatus" class="hint"></p>
-      </div>
-      <div class="card">
-        <label class="label">Modelo</label>
-        <select id="modelSelect">
-          <option value="">Selecione o provedor...</option>
-        </select>
-        <button id="refreshModelsBtn" class="btn ghost">Atualizar Modelos</button>
-        <p id="modelsStatus" class="hint"></p>
+        <div class="settings-section">
+          <div class="card">
+            <div class="card-header">
+              <h4 class="section-title">🔑 Autenticação</h4>
+            </div>
+            <div class="card-body">
+              <label class="label">Provedor</label>
+              <select id="providerSelect">
+                <option value="groq">Groq</option>
+                <option value="openrouter">OpenRouter</option>
+              </select>
+            </div>
+            <div class="card-body">
+              <label class="label">API Key</label>
+              <input id="apiKeyInput" type="password" placeholder="Insira sua API Key" />
+              <button id="saveApiBtn" class="btn primary">Salvar API</button>
+              <p id="apiStatus" class="hint"></p>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <h4 class="section-title">🧠 Modelo</h4>
+            </div>
+            <div class="card-body">
+              <label class="label">Selecione o Modelo</label>
+              <select id="modelSelect">
+                <option value="">Selecione o provedor...</option>
+              </select>
+              <button id="refreshModelsBtn" class="btn ghost">🔄 Atualizar Modelos</button>
+              <p id="modelsStatus" class="hint"></p>
+            </div>
+          </div>
         </div>
       </div>
 
+      <!-- ✅ ABA TEMA: Organizada e espaçada -->
       <div class="tab-content" data-tab-content="theme">
-      <div class="card">
-        <label class="label">Tema / Aparência</label>
-        <div class="theme-grid">
-          <div><label>Fundo</label><input type="color" id="colorBg" value="#ffffff"></div>
-          <div><label>Texto</label><input type="color" id="colorText" value="#111111"></div>
-          <div><label>Destaque</label><input type="color" id="colorAccent" value="#000000"></div>
-          <div><label>Muted</label><input type="color" id="colorMuted" value="#666666"></div>
-          <div><label>Borda</label><input type="color" id="colorBorder" value="#e6e6e6"></div>
-          <div><label>Tamanho (base)</label><input id="fontSizeSelect" type="number" min="1" max="99" value="16" /></div>
-          <div><label>Fonte</label><select id="fontFamilySelect">
-            <option value="Cal Sans, system-ui, -apple-system, 'Noto Sans', sans-serif">Cal Sans</option>
-            <option value="Noto Sans, system-ui, -apple-system, Segoe UI, Roboto, sans-serif" selected>Noto Sans</option>
-            <option value="'Space Mono', monospace">Space Mono</option>
-            <option value="'Segoe UI', system-ui, -apple-system, 'Noto Sans', sans-serif">Segoe UI</option>
-            <option value="Arial, system-ui, sans-serif">Arial</option>
-            <option value="'Inter', system-ui, -apple-system, 'Noto Sans', sans-serif">Inter</option>
-            <option value="'IBM Plex Sans', system-ui, -apple-system, 'Noto Sans', sans-serif">IBM Plex Sans</option>
-            <option value="'Poppins', system-ui, -apple-system, 'Noto Sans', sans-serif">Poppins</option>
-            <option value="'Roboto', system-ui, -apple-system, 'Noto Sans', sans-serif">Roboto</option>
-            <option value="'Lato', system-ui, -apple-system, 'Noto Sans', sans-serif">Lato</option>
-            <option value="'Montserrat', system-ui, -apple-system, 'Noto Sans', sans-serif">Montserrat</option>
-            <option value="'Merriweather', serif">Merriweather (serif)</option>
-            <option value="'Source Sans 3', system-ui, -apple-system, 'Noto Sans', sans-serif">Source Sans 3</option>
-            <option value="'Fira Sans', system-ui, -apple-system, 'Noto Sans', sans-serif">Fira Sans</option>
-          </select></div>
-        </div>
+        <div class="settings-section">
+          <div class="card">
+            <div class="card-header">
+              <h4 class="section-title">🎨 Personalização Visual</h4>
+            </div>
+            <div class="card-body">
+              <label class="label">Cores</label>
+              <div class="theme-grid">
+                <div class="color-input"><label>Fundo</label><input type="color" id="colorBg" value="#ffffff"></div>
+                <div class="color-input"><label>Texto</label><input type="color" id="colorText" value="#111111"></div>
+                <div class="color-input"><label>Destaque</label><input type="color" id="colorAccent" value="#000000"></div>
+                <div class="color-input"><label>Muted</label><input type="color" id="colorMuted" value="#666666"></div>
+                <div class="color-input"><label>Borda</label><input type="color" id="colorBorder" value="#e6e6e6"></div>
+              </div>
+            </div>
+            <div class="card-body">
+              <label class="label">Tipografia</label>
+              <div class="form-row">
+                <div class="form-col">
+                  <label class="sub-label">Tamanho (base)</label>
+                  <input id="fontSizeSelect" type="number" min="1" max="99" value="16" />
+                </div>
+                <div class="form-col">
+                  <label class="sub-label">Fonte</label>
+                  <select id="fontFamilySelect">
+                    <option value="Cal Sans, system-ui, -apple-system, 'Noto Sans', sans-serif">Cal Sans</option>
+                    <option value="Noto Sans, system-ui, -apple-system, Segoe UI, Roboto, sans-serif" selected>Noto Sans</option>
+                    <option value="'Space Mono', monospace">Space Mono</option>
+                    <option value="'Segoe UI', system-ui, -apple-system, 'Noto Sans', sans-serif">Segoe UI</option>
+                    <option value="Arial, system-ui, sans-serif">Arial</option>
+                    <option value="'Inter', system-ui, -apple-system, 'Noto Sans', sans-serif">Inter</option>
+                    <option value="'IBM Plex Sans', system-ui, -apple-system, 'Noto Sans', sans-serif">IBM Plex Sans</option>
+                    <option value="'Poppins', system-ui, -apple-system, 'Noto Sans', sans-serif">Poppins</option>
+                    <option value="'Roboto', system-ui, -apple-system, 'Noto Sans', sans-serif">Roboto</option>
+                    <option value="'Lato', system-ui, -apple-system, 'Noto Sans', sans-serif">Lato</option>
+                    <option value="'Montserrat', system-ui, -apple-system, 'Noto Sans', sans-serif">Montserrat</option>
+                    <option value="'Merriweather', serif">Merriweather (serif)</option>
+                    <option value="'Source Sans 3', system-ui, -apple-system, 'Noto Sans', sans-serif">Source Sans 3</option>
+                    <option value="'Fira Sans', system-ui, -apple-system, 'Noto Sans', sans-serif">Fira Sans</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+          
           <div class="card-actions">
-          <button id="applyThemeBtn" class="btn">Aplicar</button>
-          <button id="resetThemeBtn" class="btn ghost">Restaurar</button>
+            <button id="applyThemeBtn" class="btn primary">✅ Aplicar</button>
+            <button id="resetThemeBtn" class="btn ghost">🔄 Restaurar</button>
           </div>
         </div>
       </div>
 
+      <!-- ✅ ABA LAYOUT: Organizada e espaçada -->
       <div class="tab-content" data-tab-content="layout">
-      <div class="card">
-          <label class="label">Modos de Leitura</label>
-        <select id="readingModeSelect">
-          <option value="normal" selected>Normal</option>
-          <option value="aluno">Aluno Curioso</option>
-          <option value="detetive">Detetive</option>
-          <option value="jornalista">Jornalista</option>
-          <option value="criativo">Criativo</option>
-          <option value="minimalista">Minimalista</option>
-          <option value="analitico">Analítico</option>
-          <option value="contextualizador">Contextualizador</option>
-        </select>
-      </div>
-      <div class="card">
-        <label class="label">Layout / Template</label>
-        <select id="layoutTemplateSelect">
-          <option value="clean" selected>Clean</option>
-          <option value="compact">Compact</option>
-          <option value="spacious">Spacious</option>
-        </select>
-      </div>
+        <div class="settings-section">
+          <div class="card">
+            <div class="card-header">
+              <h4 class="section-title">📚 Modos de Leitura</h4>
+            </div>
+            <div class="card-body">
+              <label class="label">Como você quer que o conteúdo seja apresentado?</label>
+              <select id="readingModeSelect">
+                <option value="normal" selected>Normal</option>
+                <option value="aluno">🎓 Aluno Curioso</option>
+                <option value="detetive">🔍 Detetive</option>
+                <option value="jornalista">📰 Jornalista</option>
+                <option value="criativo">✨ Criativo</option>
+                <option value="minimalista">⚪ Minimalista</option>
+                <option value="analitico">📊 Analítico</option>
+                <option value="contextualizador">🌐 Contextualizador</option>
+              </select>
+              <p class="hint">Escolha o estilo de leitura que melhor se adequa ao seu objetivo.</p>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <h4 class="section-title">📐 Layout & Espaçamento</h4>
+            </div>
+            <div class="card-body">
+              <label class="label">Template</label>
+              <select id="layoutTemplateSelect">
+                <option value="clean" selected>Clean (Limpo)</option>
+                <option value="compact">Compact (Compacto)</option>
+                <option value="spacious">Spacious (Espaçoso)</option>
+              </select>
+              <p class="hint">Controla o espaçamento e organização do mapa mental.</p>
+            </div>
+          </div>
+        </div>
       </div>
 
+      <!-- ✅ ABA CACHE: Organizada e espaçada -->
       <div class="tab-content" data-tab-content="storage">
-        <div class="card">
-          <label class="label">💾 Gerenciar Cache de Resumos</label>
-          <p class="hint">Os resumos gerados pela IA são salvos automaticamente para melhorar a performance. Aqui você pode gerenciar o cache.</p>
-        </div>
-        <div class="card">
-          <div id="cacheStats" class="cache-stats">
-            <p>📊 Carregando estatísticas...</p>
+        <div class="settings-section">
+          <div class="card">
+            <div class="card-header">
+              <h4 class="section-title">💾 Gerenciamento de Cache</h4>
+            </div>
+            <div class="card-body">
+              <p class="hint">Os resumos gerados pela IA são salvos automaticamente para melhorar a performance.</p>
+            </div>
           </div>
-          <div class="card-actions">
-            <button id="clearAllSummariesBtn" class="btn secondary">🗑️ Limpar Todo Cache</button>
-            <button id="refreshCacheStatsBtn" class="btn ghost">🔄 Atualizar</button>
+
+          <div class="card">
+            <div class="card-header">
+              <h4 class="section-title">📊 Estatísticas</h4>
+            </div>
+            <div class="card-body">
+              <div id="cacheStats" class="cache-stats">
+                <p>📊 Carregando estatísticas...</p>
+              </div>
+            </div>
+            <div class="card-actions">
+              <button id="clearAllSummariesBtn" class="btn secondary">🗑️ Limpar Todo Cache</button>
+              <button id="refreshCacheStatsBtn" class="btn ghost">🔄 Atualizar</button>
+            </div>
           </div>
-        </div>
-        <div class="card">
-          <label class="label">📋 Resumos Salvos</label>
-          <div id="summariesList" class="summaries-list">
-            <p class="hint">Carregando lista de resumos...</p>
+
+          <div class="card">
+            <div class="card-header">
+              <h4 class="section-title">📋 Resumos Salvos</h4>
+            </div>
+            <div class="card-body">
+              <div id="summariesList" class="summaries-list">
+                <p class="hint">Carregando lista de resumos...</p>
+              </div>
+            </div>
           </div>
         </div>
       </div>

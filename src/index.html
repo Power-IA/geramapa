@@ -226,6 +226,7 @@
         <button class="tab-btn active" data-tab="ai">IA</button>
         <button class="tab-btn" data-tab="theme">Tema</button>
         <button class="tab-btn" data-tab="layout">Layout</button>
+        <button class="tab-btn" data-tab="storage">💾 Cache</button>
       </div>
       
       <div class="tab-content active" data-tab-content="ai">
@@ -307,6 +308,29 @@
           <option value="compact">Compact</option>
           <option value="spacious">Spacious</option>
         </select>
+      </div>
+      </div>
+
+      <div class="tab-content" data-tab-content="storage">
+        <div class="card">
+          <label class="label">💾 Gerenciar Cache de Resumos</label>
+          <p class="hint">Os resumos gerados pela IA são salvos automaticamente para melhorar a performance. Aqui você pode gerenciar o cache.</p>
+        </div>
+        <div class="card">
+          <div id="cacheStats" class="cache-stats">
+            <p>📊 Carregando estatísticas...</p>
+          </div>
+          <div class="card-actions">
+            <button id="clearAllSummariesBtn" class="btn secondary">🗑️ Limpar Todo Cache</button>
+            <button id="refreshCacheStatsBtn" class="btn ghost">🔄 Atualizar</button>
+          </div>
+        </div>
+        <div class="card">
+          <label class="label">📋 Resumos Salvos</label>
+          <div id="summariesList" class="summaries-list">
+            <p class="hint">Carregando lista de resumos...</p>
+          </div>
+        </div>
       </div>
     </div>
   </div>

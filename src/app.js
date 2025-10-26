@@ -2194,6 +2194,11 @@ if (settingsBtn) {
   settingsBtn.addEventListener('click', () => {
     togglePopup(settingsPopup);
     setActiveNavBtn(settingsBtn);
+    // Initialize cache stats when settings popup is opened
+    setTimeout(() => {
+      updateCacheStats();
+      updateSummariesList();
+    }, 100);
   });
 }
 
@@ -2812,6 +2817,258 @@ function positionOverlay(el, pos) {
   el.style.top = (pos.y - 12) + 'px';
 }
 
+// Function to update tooltip summary content
+async function updateTooltipSummary(tooltip, node, mapJson, nodeLabel, mapTitle, layoutModel, mode) {
+  // prepare prompt: include map title + node label + brief context
+  const parents = node.incomers('node').map(n => n.data('label')).filter(Boolean);
+  const children = node.outgoers('node').map(n => n.data('label')).filter(Boolean);
+  const connected = Array.from(new Set([...(parents||[]), ...(children||[]), ...node.connectedEdges().connectedNodes().map(n=>n.data('label')||'')])).filter(Boolean);
+
+  const modeInstr = {
+    normal: 'Formato padrão, objetivo e conciso.',
+    aluno: 'Tom: acolhedor e didático; use analogias simples, explique como para um aluno curioso; inclua perguntas retóricas ("você pode estar se perguntando...").',
+    detetive: 'Tom: investigativo; destaque pontos-chave, contradições e lacunas; questione suposições e destaque evidências.',
+    jornalista: 'Tom: neutro e objetivo; pirâmide invertida; destaque o fato principal nos primeiros termos: quem, o quê, quando, onde, por quê.',
+    criativo: 'Tom: imaginativo; use metáforas, histórias curtas e imagens mentais para reimaginar o conteúdo.',
+    minimalista: 'Tom: extremamente sucinto; frases curtas, bullets, extraia a essência em poucas palavras.',
+    analitico: 'Tom: analítico; estruture em premissas, evidências e conclusão, passo a passo.',
+    contextualizador: 'Tom: relacione ao contexto histórico/social/cultural; faça conexões interdisciplinares.'
+  }[mode] || 'Formato padrão, objetivo e conciso.';
+
+  const prompt = `Considere o mapa "${mapTitle}" e o modelo de layout "${layoutModel}". ${modeInstr} Forneça um resumo EM MARKDOWN (suportando títulos, parágrafos, listas, ênfase **negrito**, _itálico_, links e trechos de código quando aplicável) em 2-6 frases do tópico "${nodeLabel}", levando em conta: (1) nós pais: ${parents.length?parents.join(', '):'nenhum'}, (2) subnós: ${children.length?children.join(', '):'nenhum'}, e (3) nós ligados/relacionados: ${connected.length?connected.join(', '):'nenhum'}. Use o contexto do próprio mapa (título e estrutura) para explicar a função e relevância deste nó. Responda apenas com o texto em Markdown, sem explicações adicionais. Seja conciso e prático.`;
+
+  try {
+    guardProvider();
+
+    // Generate new summary directly (skip cache check for update)
+    console.log(`🤖 Gerando novo resumo via IA: ${nodeLabel}`);
+    const markdown = await window.AI.chatPlain({
+      provider: state.provider,
+      apiKey: state.apiKey,
+      model: state.model,
+      message: prompt,
+      temperature: 0.2
+    });
+
+    // ✅ SALVAR NOVO RESUMO NO LOCALSTORAGE
+    window.Storage.GeraMapas.saveSummary({
+      nodeLabel: nodeLabel,
+      mapTitle: mapTitle,
+      summary: markdown,
+      readingMode: mode,
+      layoutModel: layoutModel
+    });
+
+    // render markdown usando marked local
+    let rendered = '';
+    try {
+      if (window.marked) {
+        const htmlContent = window.marked.parse ? window.marked.parse(markdown) : window.marked(markdown);
+        rendered = processMarkdownLinks(htmlContent);
+      } else {
+        throw new Error('Marked não carregado');
+      }
+    } catch (e) {
+      // fallback: basic escaping + preserve line breaks
+      rendered = `<pre style="white-space:pre-wrap;word-wrap:break-word;">${markdown.replace(/</g,'&lt;')}</pre>`;
+    }
+
+    const textEl = tooltip.querySelector('.tt-text');
+    if (textEl) {
+      // store raw markdown for copy action and set rendered HTML
+      tooltip.dataset.rawMarkdown = markdown;
+      textEl.innerHTML = rendered;
+    }
+  } catch (err) {
+    const textEl = tooltip.querySelector('.tt-text');
+    if (textEl) textEl.textContent = `Erro: ${err.message}`;
+    throw err;
+  }
+}
+
+// Function to update node slider content if it's open for the current node
+async function updateNodeSliderContent(node, mapJson) {
+  if (!nodeSlider || nodeSlider.style.display === 'none') {
+    return; // Node slider is not open
+  }
+
+  const currentNodeTitle = nodeSlider.querySelector('.node-slider-title')?.textContent;
+  const nodeLabel = node.data('label') || 'Nó sem título';
+
+  // Check if node slider is showing this node
+  if (currentNodeTitle !== nodeLabel) {
+    return; // Different node is being shown
+  }
+
+  try {
+    console.log(`🔄 Atualizando conteúdo do node-slider para: ${nodeLabel}`);
+
+    // Clear all cached tab content for this node
+    const mapTitle = (mapJson && mapJson.title) ? mapJson.title : 'Mapa Mental';
+    const tabs = ['normal', 'tecnico', 'leigo', 'palestra', 'roteiro'];
+
+    tabs.forEach(tab => {
+      removeTabContentFromStorage(nodeLabel, tab);
+    });
+
+    // Update all tabs in node slider
+    const layoutModel = state.currentModel || 'default';
+    const mode = state.readingMode || 'normal';
+
+    for (const tabName of tabs) {
+      const target = nodeSlider.querySelector(`.tab-content[data-tab-content="${tabName}"]`);
+      if (target) {
+        target.innerHTML = '<em>Atualizando conteúdo...</em>';
+        target.dataset.loading = '0';
+
+        try {
+          await generateTabContentForNode(target, node, mapJson, tabName, layoutModel, mode);
+        } catch (error) {
+          console.error(`Erro ao atualizar aba ${tabName}:`, error);
+          target.innerHTML = `<div class="hint" style="color: var(--accent);">Erro ao atualizar: ${error.message}</div>`;
+        }
+      }
+    }
+
+    // Update the active tab display
+    const activeTab = nodeSlider.querySelector('.tab-content.active');
+    if (activeTab && activeTab.dataset.loading === '1') {
+      // Content is ready, make sure it's visible
+      nodeSlider.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
+      activeTab.classList.add('active');
+    }
+
+  } catch (error) {
+    console.error('Erro ao atualizar node-slider:', error);
+  }
+}
+
+// Function to update specific tab content
+async function updateTabContent(nodeSlider, node, mapJson, tabName, layoutModel, mode) {
+  try {
+    const target = nodeSlider.querySelector(`.tab-content[data-tab-content="${tabName}"]`);
+    const updateBtn = nodeSlider.querySelector(`.tab-update[data-tab="${tabName}"]`);
+    const nodeLabel = node.data('label') || 'Nó sem título';
+
+    if (!target || !updateBtn) return;
+
+    // Check if API is configured
+    if (!state.apiKey || !state.model) {
+      target.innerHTML = `
+        <div style="color: var(--accent); font-weight: 600; margin-bottom: 8px;">
+          ⚠️ API não configurada
+        </div>
+        <div style="font-size: 0.9em; margin-bottom: 12px;">
+          Configure sua API Key e modelo nas <strong>Configurações ⚙️</strong> para atualizar conteúdo.
+        </div>
+        <button class="btn small" onclick="document.getElementById('settingsBtn').click()" style="font-size: 0.8em; padding: 6px 10px;">
+          ⚙️ Abrir Configurações
+        </button>
+      `;
+      return;
+    }
+
+    // Show loading state
+    updateBtn.textContent = '⏳';
+    updateBtn.disabled = true;
+    target.innerHTML = '<em>Gerando novo conteúdo...</em>';
+    target.dataset.loading = '0';
+
+    // Remove cached content to force regeneration
+    removeTabContentFromStorage(nodeLabel, tabName);
+
+    // Generate new content
+    await generateTabContentForNode(target, node, mapJson, tabName, layoutModel, mode);
+
+    // Update button state
+    updateBtn.textContent = '✅';
+    setTimeout(() => {
+      updateBtn.textContent = '🔄';
+      updateBtn.disabled = false;
+    }, 2000);
+
+    console.log(`🔄 Aba atualizada: ${tabName}`);
+
+  } catch (error) {
+    console.error(`Erro ao atualizar aba ${tabName}:`, error);
+
+    const target = nodeSlider.querySelector(`.tab-content[data-tab-content="${tabName}"]`);
+    const updateBtn = nodeSlider.querySelector(`.tab-update[data-tab="${tabName}"]`);
+
+    if (target) {
+      target.innerHTML = `<div class="hint" style="color: var(--accent);">Erro ao atualizar: ${error.message}</div>`;
+    }
+
+    if (updateBtn) {
+      updateBtn.textContent = '🔄';
+      updateBtn.disabled = false;
+    }
+  }
+}
+
+// Function to generate tab content for a specific node
+async function generateTabContentForNode(target, node, mapJson, tabName, layoutModel, mode) {
+  const nodeLabel = node.data('label') || 'Nó sem título';
+  const mapTitle = (mapJson && mapJson.title) ? mapJson.title : 'Mapa Mental';
+  const parents = node.incomers('node').map(n => n.data('label')).filter(Boolean);
+  const children = node.outgoers('node').map(n => n.data('label')).filter(Boolean);
+  const connected = Array.from(new Set([...parents, ...children]));
+
+  try {
+    guardProvider();
+
+    let prompt = '';
+    let contentType = 'markdown';
+
+    switch (tabName) {
+      case 'tecnico':
+        prompt = `Gere conteúdo TÉCNICO detalhado sobre "${nodeLabel}" do mapa "${mapTitle}". Use o modelo "${layoutModel}" e modo "${mode}". Inclua definições precisas, terminologia específica, análise profunda e conceitos avançados. Considere os nós relacionados: ${connected.join(', ')}. Responda em formato markdown estruturado com títulos, listas e exemplos técnicos.`;
+        break;
+      case 'leigo':
+        prompt = `Explique "${nodeLabel}" do mapa "${mapTitle}" de forma SIMPLES e ACESSÍVEL, como se estivesse falando com alguém que não conhece o assunto. Use o modelo "${layoutModel}" e modo "${mode}". Use analogias cotidianas, linguagem clara e evite jargões técnicos. Considere os nós relacionados: ${connected.join(', ')}. Responda em formato markdown com explicações passo a passo.`;
+        break;
+      case 'palestra':
+        prompt = `Crie um ROTEIRO DE PALESTRA em primeira pessoa sobre "${nodeLabel}" do mapa "${mapTitle}". Use o modelo "${layoutModel}" e modo "${mode}". Estruture como um discurso natural, com introdução envolvente, desenvolvimento claro e conclusão impactante. Considere os nós relacionados: ${connected.join(', ')}. Responda em formato markdown com marcações de tom de voz e pausas.`;
+        break;
+      case 'normal':
+      default:
+        prompt = `Gere conteúdo NORMAL sobre "${nodeLabel}" do mapa "${mapTitle}". Use o modelo "${layoutModel}" e modo "${mode}". Forneça informações equilibradas e bem estruturadas. Considere os nós relacionados: ${connected.join(', ')}. Responda em formato markdown.`;
+        break;
+    }
+
+    const markdown = await window.AI.chatPlain({
+      provider: state.provider,
+      apiKey: state.apiKey,
+      model: state.model,
+      message: prompt,
+      temperature: 0.2
+    });
+
+    // Save content to localStorage
+    saveTabContentToStorage(nodeLabel, tabName, markdown);
+
+    // Render markdown
+    let rendered = '';
+    try {
+      if (window.marked) {
+        const htmlContent = window.marked.parse ? window.marked.parse(markdown) : window.marked(markdown);
+        rendered = processMarkdownLinks(htmlContent);
+      } else {
+        rendered = `<pre style="white-space:pre-wrap;word-wrap:break-word;">${markdown.replace(/</g,'&lt;')}</pre>`;
+      }
+    } catch (e) {
+      rendered = `<pre style="white-space:pre-wrap;word-wrap:break-word;">${markdown.replace(/</g,'&lt;')}</pre>`;
+    }
+
+    target.innerHTML = rendered;
+    target.dataset.loading = '1';
+
+  } catch (error) {
+    target.innerHTML = `<div class="hint" style="color: var(--accent);">Erro ao gerar conteúdo: ${error.message}</div>`;
+    throw error;
+  }
+}
+
 /* show tooltip and request node-specific summary from model */
 async function showTooltipForNode(node, anchorEl, mapJson) {
   // remove existing tooltip
@@ -2831,6 +3088,7 @@ async function showTooltipForNode(node, anchorEl, mapJson) {
     </div>
     <div class="node-tooltip-actions">
                          <button class="btn small copy-text" title="Copiar resumo">Copiar</button>
+                         <button class="btn small update-summary" title="Atualizar resumo">🔄 Atualizar</button>
                          <button class="btn small expand-node" title="Expansão">Expansão</button>
                          <button class="btn small add-child">Adicionar subnó</button>
                          <button class="btn small gen-image" title="Gerar Imagem">Gerar Imagem</button>
@@ -2906,14 +3164,38 @@ async function showTooltipForNode(node, anchorEl, mapJson) {
  
   try {
     guardProvider();
-    // use chatPlain so the selected model/provider produces the plain text markdown
-    const markdown = await window.AI.chatPlain({
-      provider: state.provider,
-      apiKey: state.apiKey,
-      model: state.model,
-      message: prompt,
-      temperature: 0.2
-    });
+
+    // ✅ VERIFICAR SE JÁ TEM RESUMO SALVO NO LOCALSTORAGE
+    const savedSummary = window.Storage.GeraMapas.loadSummary(nodeLabel, mapTitle);
+
+    let markdown = '';
+    if (savedSummary &&
+        savedSummary.readingMode === mode &&
+        savedSummary.layoutModel === layoutModel &&
+        savedSummary.summary) {
+      // Usar resumo salvo se os parâmetros forem os mesmos
+      markdown = savedSummary.summary;
+      console.log(`📂 Resumo carregado do localStorage: ${nodeLabel}`);
+    } else {
+      // Gerar novo resumo se não houver salvo ou parâmetros diferentes
+      console.log(`🤖 Gerando novo resumo via IA: ${nodeLabel}`);
+      markdown = await window.AI.chatPlain({
+        provider: state.provider,
+        apiKey: state.apiKey,
+        model: state.model,
+        message: prompt,
+        temperature: 0.2
+      });
+
+      // ✅ SALVAR RESUMO NO LOCALSTORAGE APÓS GERAÇÃO
+      window.Storage.GeraMapas.saveSummary({
+        nodeLabel: nodeLabel,
+        mapTitle: mapTitle,
+        summary: markdown,
+        readingMode: mode,
+        layoutModel: layoutModel
+      });
+    }
 
     // render markdown usando marked local
     let rendered = '';
@@ -2961,6 +3243,74 @@ async function showTooltipForNode(node, anchorEl, mapJson) {
         } catch (err2) {
           alert('Falha ao copiar: ' + (err2 && err2.message ? err2.message : err2));
         }
+      }
+    });
+  }
+
+  // Add update behavior - regenerate summary
+  const updateBtn = tooltip.querySelector('.update-summary');
+  if (updateBtn) {
+    updateBtn.addEventListener('click', async () => {
+      try {
+        // Check if API is configured
+        if (!state.apiKey || !state.model) {
+          const textEl = tooltip.querySelector('.tt-text');
+          if (textEl) {
+            textEl.innerHTML = `
+              <div style="color: var(--accent); font-weight: 600; margin-bottom: 8px;">
+                ⚠️ API não configurada
+              </div>
+              <div style="font-size: 0.9em; margin-bottom: 12px;">
+                Configure sua API Key e modelo nas <strong>Configurações ⚙️</strong> para atualizar resumos.
+              </div>
+              <button class="btn small" onclick="document.getElementById('settingsBtn').click()" style="font-size: 0.8em; padding: 6px 10px;">
+                ⚙️ Abrir Configurações
+              </button>
+            `;
+          }
+          return;
+        }
+
+        // Show loading state and disable button
+        updateBtn.textContent = '🔄 Atualizando...';
+        updateBtn.disabled = true;
+
+        const textEl = tooltip.querySelector('.tt-text');
+        if (textEl) {
+          textEl.innerHTML = 'Gerando novo resumo...';
+        }
+
+        // Delete existing summary from cache
+        const mapTitle = (mapJson && mapJson.title) ? mapJson.title : 'Mapa Mental';
+        const layoutModel = state.currentModel || 'default';
+        const mode = state.readingMode || 'normal';
+
+        window.Storage.GeraMapas.deleteSummary(nodeLabel, mapTitle);
+
+        // Generate new summary
+        await updateTooltipSummary(tooltip, node, mapJson, nodeLabel, mapTitle, layoutModel, mode);
+
+        // Update node-slider if it's open and showing this node
+        await updateNodeSliderContent(node, mapJson);
+
+        // Re-enable button
+        updateBtn.textContent = '✅ Atualizado';
+        setTimeout(() => {
+          updateBtn.textContent = '🔄 Atualizar';
+          updateBtn.disabled = false;
+        }, 2000);
+
+        console.log(`🔄 Resumo atualizado: ${nodeLabel}`);
+      } catch (error) {
+        console.error('Erro ao atualizar resumo:', error);
+        const textEl = tooltip.querySelector('.tt-text');
+        if (textEl) {
+          textEl.textContent = `Erro ao atualizar: ${error.message}`;
+        }
+
+        // Re-enable button on error
+        updateBtn.textContent = '🔄 Atualizar';
+        updateBtn.disabled = false;
       }
     });
   }
@@ -3013,12 +3363,30 @@ async function showTooltipForNode(node, anchorEl, mapJson) {
         nodeSlider.querySelector('.node-slider-content').innerHTML = `
           <div class="node-tabs">
             <div class="node-tabs-header">
-              <button data-tab="normal" class="tab active">Normal</button>
-              <button data-tab="tecnico" class="tab">Técnico</button>
-              <button data-tab="leigo" class="tab">Leigo</button>
-              <button data-tab="palestra" class="tab">Palestra</button>
-              <button data-tab="roteiro" class="tab">Roteiro Curto</button>
-              <button data-tab="exercicio" class="tab">Exercício</button>
+              <div class="tab-with-action">
+                <button data-tab="normal" class="tab active">Normal</button>
+                <button class="tab-update" data-tab="normal" title="Atualizar conteúdo">🔄</button>
+              </div>
+              <div class="tab-with-action">
+                <button data-tab="tecnico" class="tab">Técnico</button>
+                <button class="tab-update" data-tab="tecnico" title="Atualizar conteúdo">🔄</button>
+              </div>
+              <div class="tab-with-action">
+                <button data-tab="leigo" class="tab">Leigo</button>
+                <button class="tab-update" data-tab="leigo" title="Atualizar conteúdo">🔄</button>
+              </div>
+              <div class="tab-with-action">
+                <button data-tab="palestra" class="tab">Palestra</button>
+                <button class="tab-update" data-tab="palestra" title="Atualizar conteúdo">🔄</button>
+              </div>
+              <div class="tab-with-action">
+                <button data-tab="roteiro" class="tab">Roteiro Curto</button>
+                <button class="tab-update" data-tab="roteiro" title="Atualizar conteúdo">🔄</button>
+              </div>
+              <div class="tab-with-action">
+                <button data-tab="exercicio" class="tab">Exercício</button>
+                <button class="tab-update" data-tab="exercicio" title="Atualizar conteúdo">🔄</button>
+              </div>
               <button id="downloadTabBtn" class="tab download-tab" title="Download conteúdo da aba ativa">📥</button>
             </div>
             <div class="node-tabs-body">
@@ -3080,7 +3448,18 @@ async function showTooltipForNode(node, anchorEl, mapJson) {
             downloadActiveTabContent(nodeSlider, nodeLabel);
             return false;
           }
-          
+
+          // ✅ BOTÃO DE ATUALIZAR ABA
+          if (ev.target.classList.contains('tab-update')) {
+            ev.preventDefault();
+            ev.stopPropagation();
+            ev.stopImmediatePropagation();
+
+            const tabName = ev.target.dataset.tab;
+            await updateTabContent(nodeSlider, node, mapJson, tabName, layoutModel, mode);
+            return false;
+          }
+
           const btn = ev.target.closest('button[data-tab]');
           if (!btn) return;
           const tab = btn.dataset.tab;
@@ -5367,6 +5746,12 @@ const resetThemeBtn = document.getElementById('resetThemeBtn');
 const layoutTemplateSelect = document.getElementById('layoutTemplateSelect');
 const readingModeSelect = document.getElementById('readingModeSelect');
 
+// Cache management elements
+const cacheStats = document.getElementById('cacheStats');
+const clearAllSummariesBtn = document.getElementById('clearAllSummariesBtn');
+const refreshCacheStatsBtn = document.getElementById('refreshCacheStatsBtn');
+const summariesList = document.getElementById('summariesList');
+
 /* apply persisted theme/layout if exists */
 if (persisted && persisted.theme) { state.theme = persisted.theme; applyTheme(state.theme); }
 if (persisted && persisted.layout) { state.layout = persisted.layout; layoutTemplateSelect.value = persisted.layout; applyLayoutPreset(persisted.layout); }
@@ -5426,6 +5811,140 @@ fontFamilySelect.addEventListener('change', (e) => {
 });
 
 /* Export functionality - Removido duplicata, já definido acima */
+
+// Cache Management Functions
+function updateCacheStats() {
+  try {
+    const summaries = window.Storage.GeraMapas.listAllSummaries();
+    const totalSize = JSON.stringify(summaries).length;
+    const oldestSummary = summaries.length > 0 ?
+      new Date(Math.min(...summaries.map(s => s.timestamp))).toLocaleDateString() : 'N/A';
+    const newestSummary = summaries.length > 0 ?
+      new Date(Math.max(...summaries.map(s => s.timestamp))).toLocaleDateString() : 'N/A';
+
+    if (cacheStats) {
+      cacheStats.innerHTML = `
+        <div class="stat-item">
+          <span>Total de resumos:</span>
+          <span class="stat-value">${summaries.length}</span>
+        </div>
+        <div class="stat-item">
+          <span>Tamanho estimado:</span>
+          <span class="stat-value">${(totalSize / 1024).toFixed(1)} KB</span>
+        </div>
+        <div class="stat-item">
+          <span>Mais antigo:</span>
+          <span class="stat-value">${oldestSummary}</span>
+        </div>
+        <div class="stat-item">
+          <span>Mais recente:</span>
+          <span class="stat-value">${newestSummary}</span>
+        </div>
+      `;
+    }
+  } catch (error) {
+    console.error('Erro ao atualizar estatísticas do cache:', error);
+    if (cacheStats) {
+      cacheStats.innerHTML = '<p class="hint" style="color: var(--accent);">Erro ao carregar estatísticas</p>';
+    }
+  }
+}
+
+function updateSummariesList() {
+  try {
+    const summaries = window.Storage.GeraMapas.listAllSummaries();
+
+    if (summariesList) {
+      if (summaries.length === 0) {
+        summariesList.innerHTML = '<div class="no-summaries">Nenhum resumo salvo no cache</div>';
+        return;
+      }
+
+      summariesList.innerHTML = summaries
+        .sort((a, b) => b.timestamp - a.timestamp) // Ordenar por mais recente primeiro
+        .map(summary => {
+          const date = new Date(summary.timestamp).toLocaleString();
+          const truncatedTitle = summary.nodeLabel.length > 30 ?
+            summary.nodeLabel.substring(0, 30) + '...' : summary.nodeLabel;
+
+          return `
+            <div class="summary-item">
+              <div class="summary-info">
+                <div class="summary-title">${escapeHtml(truncatedTitle)}</div>
+                <div class="summary-meta">
+                  ${summary.mapTitle} • ${summary.readingMode} • ${date}
+                </div>
+              </div>
+              <div class="summary-actions">
+                <button class="btn ghost delete-summary" data-node="${summary.nodeLabel}" data-map="${summary.mapTitle}" title="Excluir resumo">🗑️</button>
+              </div>
+            </div>
+          `;
+        }).join('');
+    }
+  } catch (error) {
+    console.error('Erro ao atualizar lista de resumos:', error);
+    if (summariesList) {
+      summariesList.innerHTML = '<div class="no-summaries">Erro ao carregar resumos</div>';
+    }
+  }
+}
+
+function clearAllSummaries() {
+  try {
+    if (confirm('Tem certeza que deseja limpar todo o cache de resumos? Esta ação não pode ser desfeita.')) {
+      // Limpar todos os resumos do localStorage
+      localStorage.removeItem('mm.summaries.v1');
+
+      // Atualizar interface
+      updateCacheStats();
+      updateSummariesList();
+
+      console.log('✅ Todo cache de resumos foi limpo');
+      alert('Cache de resumos limpo com sucesso!');
+    }
+  } catch (error) {
+    console.error('Erro ao limpar cache:', error);
+    alert('Erro ao limpar cache. Tente novamente.');
+  }
+}
+
+function deleteSummary(nodeLabel, mapTitle) {
+  try {
+    if (confirm(`Excluir resumo do nó "${nodeLabel}"?`)) {
+      window.Storage.GeraMapas.deleteSummary(nodeLabel, mapTitle);
+      updateCacheStats();
+      updateSummariesList();
+      console.log(`✅ Resumo excluído: ${nodeLabel}`);
+    }
+  } catch (error) {
+    console.error('Erro ao excluir resumo:', error);
+    alert('Erro ao excluir resumo. Tente novamente.');
+  }
+}
+
+// Event listeners for cache management
+if (clearAllSummariesBtn) {
+  clearAllSummariesBtn.addEventListener('click', clearAllSummaries);
+}
+
+if (refreshCacheStatsBtn) {
+  refreshCacheStatsBtn.addEventListener('click', () => {
+    updateCacheStats();
+    updateSummariesList();
+  });
+}
+
+// Event delegation for delete buttons in summaries list
+if (summariesList) {
+  summariesList.addEventListener('click', (e) => {
+    if (e.target.classList.contains('delete-summary')) {
+      const nodeLabel = e.target.dataset.node;
+      const mapTitle = e.target.dataset.map;
+      deleteSummary(nodeLabel, mapTitle);
+    }
+  });
+}
 
 // Expose showCollapsedListPopup globally for testing
 window.showCollapsedListPopup = showCollapsedListPopup;
@@ -6270,6 +6789,16 @@ function hasStoredContent(nodeLabel, tabName) {
     return localStorage.getItem(storageKey) !== null;
   } catch (error) {
     return false;
+  }
+}
+
+function removeTabContentFromStorage(nodeLabel, tabName) {
+  try {
+    const storageKey = `tab_content_${nodeLabel.replace(/[^a-zA-Z0-9]/g, '_')}_${tabName}`;
+    localStorage.removeItem(storageKey);
+    console.log(`🗑️ Conteúdo removido do cache: ${tabName} para ${nodeLabel}`);
+  } catch (error) {
+    console.error('Erro ao remover conteúdo do cache:', error);
   }
 }
 // ✅ FUNÇÃO DE TESTE PARA VERIFICAR DOWNLOADS

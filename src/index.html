@@ -227,24 +227,25 @@
         <button class="tab-btn" data-tab="theme">🎨 Tema</button>
         <button class="tab-btn" data-tab="layout">📐 Layout</button>
         <button class="tab-btn" data-tab="storage">💾 Cache</button>
+        <button class="tab-btn" data-tab="chat">💬 Chat IA Tutor</button>
       </div>
       
       <!-- ✅ ABA IA: Organizada e espaçada -->
       <div class="tab-content active" data-tab-content="ai">
         <div class="settings-section">
-          <div class="card">
+      <div class="card">
             <div class="card-header">
               <h4 class="section-title">🔑 Autenticação</h4>
             </div>
             <div class="card-body">
-              <label class="label">Provedor</label>
-              <select id="providerSelect">
-                <option value="groq">Groq</option>
-                <option value="openrouter">OpenRouter</option>
-              </select>
-            </div>
+        <label class="label">Provedor</label>
+        <select id="providerSelect">
+          <option value="groq">Groq</option>
+          <option value="openrouter">OpenRouter</option>
+        </select>
+      </div>
             <div class="card-body">
-              <label class="label">API Key</label>
+        <label class="label">API Key</label>
               <div style="display: flex; gap: 8px;">
                 <input id="apiKeyInput" type="password" placeholder="Insira sua API Key" style="flex: 1;" />
                 <button id="deleteApiBtn" class="btn secondary" title="Excluir API Key">🗑️</button>
@@ -252,21 +253,21 @@
               <div style="display: flex; gap: 8px; margin-top: 8px;">
                 <button id="saveApiBtn" class="btn primary">Salvar API</button>
               </div>
-              <p id="apiStatus" class="hint"></p>
-            </div>
+        <p id="apiStatus" class="hint"></p>
+      </div>
           </div>
 
-          <div class="card">
+      <div class="card">
             <div class="card-header">
               <h4 class="section-title">🧠 Modelo</h4>
             </div>
             <div class="card-body">
               <label class="label">Selecione o Modelo</label>
-              <select id="modelSelect">
-                <option value="">Selecione o provedor...</option>
-              </select>
+        <select id="modelSelect">
+          <option value="">Selecione o provedor...</option>
+        </select>
               <button id="refreshModelsBtn" class="btn ghost">🔄 Atualizar Modelos</button>
-              <p id="modelsStatus" class="hint"></p>
+        <p id="modelsStatus" class="hint"></p>
             </div>
           </div>
         </div>
@@ -275,13 +276,13 @@
       <!-- ✅ ABA TEMA: Organizada e espaçada -->
       <div class="tab-content" data-tab-content="theme">
         <div class="settings-section">
-          <div class="card">
+      <div class="card">
             <div class="card-header">
               <h4 class="section-title">🎨 Personalização Visual</h4>
             </div>
             <div class="card-body">
               <label class="label">Cores</label>
-              <div class="theme-grid">
+        <div class="theme-grid">
                 <div class="color-input"><label>Fundo</label><input type="color" id="colorBg" value="#ffffff"></div>
                 <div class="color-input"><label>Texto</label><input type="color" id="colorText" value="#111111"></div>
                 <div class="color-input"><label>Destaque</label><input type="color" id="colorAccent" value="#000000"></div>
@@ -299,25 +300,25 @@
                 <div class="form-col">
                   <label class="sub-label">Fonte</label>
                   <select id="fontFamilySelect">
-                    <option value="Cal Sans, system-ui, -apple-system, 'Noto Sans', sans-serif">Cal Sans</option>
-                    <option value="Noto Sans, system-ui, -apple-system, Segoe UI, Roboto, sans-serif" selected>Noto Sans</option>
-                    <option value="'Space Mono', monospace">Space Mono</option>
-                    <option value="'Segoe UI', system-ui, -apple-system, 'Noto Sans', sans-serif">Segoe UI</option>
-                    <option value="Arial, system-ui, sans-serif">Arial</option>
-                    <option value="'Inter', system-ui, -apple-system, 'Noto Sans', sans-serif">Inter</option>
-                    <option value="'IBM Plex Sans', system-ui, -apple-system, 'Noto Sans', sans-serif">IBM Plex Sans</option>
-                    <option value="'Poppins', system-ui, -apple-system, 'Noto Sans', sans-serif">Poppins</option>
-                    <option value="'Roboto', system-ui, -apple-system, 'Noto Sans', sans-serif">Roboto</option>
-                    <option value="'Lato', system-ui, -apple-system, 'Noto Sans', sans-serif">Lato</option>
-                    <option value="'Montserrat', system-ui, -apple-system, 'Noto Sans', sans-serif">Montserrat</option>
-                    <option value="'Merriweather', serif">Merriweather (serif)</option>
-                    <option value="'Source Sans 3', system-ui, -apple-system, 'Noto Sans', sans-serif">Source Sans 3</option>
-                    <option value="'Fira Sans', system-ui, -apple-system, 'Noto Sans', sans-serif">Fira Sans</option>
+            <option value="Cal Sans, system-ui, -apple-system, 'Noto Sans', sans-serif">Cal Sans</option>
+            <option value="Noto Sans, system-ui, -apple-system, Segoe UI, Roboto, sans-serif" selected>Noto Sans</option>
+            <option value="'Space Mono', monospace">Space Mono</option>
+            <option value="'Segoe UI', system-ui, -apple-system, 'Noto Sans', sans-serif">Segoe UI</option>
+            <option value="Arial, system-ui, sans-serif">Arial</option>
+            <option value="'Inter', system-ui, -apple-system, 'Noto Sans', sans-serif">Inter</option>
+            <option value="'IBM Plex Sans', system-ui, -apple-system, 'Noto Sans', sans-serif">IBM Plex Sans</option>
+            <option value="'Poppins', system-ui, -apple-system, 'Noto Sans', sans-serif">Poppins</option>
+            <option value="'Roboto', system-ui, -apple-system, 'Noto Sans', sans-serif">Roboto</option>
+            <option value="'Lato', system-ui, -apple-system, 'Noto Sans', sans-serif">Lato</option>
+            <option value="'Montserrat', system-ui, -apple-system, 'Noto Sans', sans-serif">Montserrat</option>
+            <option value="'Merriweather', serif">Merriweather (serif)</option>
+            <option value="'Source Sans 3', system-ui, -apple-system, 'Noto Sans', sans-serif">Source Sans 3</option>
+            <option value="'Fira Sans', system-ui, -apple-system, 'Noto Sans', sans-serif">Fira Sans</option>
                   </select>
                 </div>
               </div>
             </div>
-          </div>
+        </div>
           
           <div class="card-actions">
             <button id="applyThemeBtn" class="btn primary">✅ Aplicar</button>
@@ -329,14 +330,14 @@
       <!-- ✅ ABA LAYOUT: Organizada e espaçada -->
       <div class="tab-content" data-tab-content="layout">
         <div class="settings-section">
-          <div class="card">
+      <div class="card">
             <div class="card-header">
               <h4 class="section-title">📚 Modos de Leitura</h4>
             </div>
             <div class="card-body">
               <label class="label">Como você quer que o conteúdo seja apresentado?</label>
-              <select id="readingModeSelect">
-                <option value="normal" selected>Normal</option>
+        <select id="readingModeSelect">
+          <option value="normal" selected>Normal</option>
                 <option value="aluno">🎓 Aluno Curioso</option>
                 <option value="detetive">🔍 Detetive</option>
                 <option value="jornalista">📰 Jornalista</option>
@@ -359,7 +360,7 @@
                 <option value="clean" selected>Clean (Limpo)</option>
                 <option value="compact">Compact (Compacto)</option>
                 <option value="spacious">Spacious (Espaçoso)</option>
-              </select>
+        </select>
               <p class="hint">Controla o espaçamento e organização do mapa mental.</p>
             </div>
           </div>
@@ -401,6 +402,62 @@
               <div id="summariesList" class="summaries-list">
                 <p class="hint">Carregando lista de resumos...</p>
               </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ✅ ABA CHAT IA TUTOR: Cores Personalizadas -->
+      <div class="tab-content" data-tab-content="chat">
+        <div class="settings-section">
+          <div class="card">
+            <div class="card-header">
+              <h4 class="section-title">💬 Cores do Chat IA Tutor</h4>
+            </div>
+            <div class="card-body">
+              <p class="hint">Personalize as cores das mensagens do chat do IA Tutor.</p>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <h4 class="section-title">🤖 Mensagens do Bot</h4>
+            </div>
+            <div class="card-body">
+              <div class="form-row">
+                <div class="form-col">
+                  <label class="label">Fundo</label>
+                  <input type="color" id="chatBotBgColor" value="#e3f2fd" class="color-input" />
+                </div>
+                <div class="form-col">
+                  <label class="label">Texto</label>
+                  <input type="color" id="chatBotTextColor" value="#1976d2" class="color-input" />
+                </div>
+                <div class="form-col">
+                  <label class="label">Borda</label>
+                  <input type="color" id="chatBotBorderColor" value="#90caf9" class="color-input" />
+                </div>
+              </div>
+              <button id="resetChatBotColorsBtn" class="btn ghost">🔄 Cores Padrão</button>
+            </div>
+          </div>
+
+      <div class="card">
+            <div class="card-header">
+              <h4 class="section-title">👤 Mensagens do Usuário</h4>
+            </div>
+            <div class="card-body">
+              <div class="form-row">
+                <div class="form-col">
+                  <label class="label">Fundo</label>
+                  <input type="color" id="chatUserBgColor" value="#000000" class="color-input" />
+                </div>
+                <div class="form-col">
+                  <label class="label">Texto</label>
+                  <input type="color" id="chatUserTextColor" value="#ffffff" class="color-input" />
+                </div>
+              </div>
+              <button id="resetChatUserColorsBtn" class="btn ghost">🔄 Cores Padrão</button>
             </div>
           </div>
         </div>

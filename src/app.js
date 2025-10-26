@@ -264,7 +264,7 @@ function initApp() {
   state.cy.on('tap', (evt) => {
     // Verificar se o clique foi no background (não em nó)
     if (evt.target === state.cy) {
-      console.log('🖱️ Clique no mapa detectado - fechando popup de expansão');
+      // console.log('🖱️ Clique no mapa detectado - fechando popup de expansão'); // ✅ Removido para reduzir logs
       
       // Fechar node-slider se estiver aberto
       if (nodeSlider && nodeSlider.classList.contains('open')) {
@@ -292,7 +292,7 @@ if (persisted) {
   if (state.provider && persisted.apiKeys) {
     state.apiKey = persisted.apiKeys[state.provider] || '';
   } else {
-    state.apiKey = persisted.apiKey || '';
+  state.apiKey = persisted.apiKey || '';
   }
   state.model = persisted.model || '';
   providerSelect.value = state.provider;
@@ -403,7 +403,7 @@ try {
         top: rect.top - 10,
         bottom: rect.bottom + 10
       };
-      console.log('Zona de exclusão do botão fechar atualizada:', nodeSliderCloseButtonRect);
+      // console.log('Zona de exclusão do botão fechar atualizada:', nodeSliderCloseButtonRect); // ✅ Removido para reduzir poluição no console
     }
   }
   
@@ -764,7 +764,7 @@ providerSelect.addEventListener('change', async () => {
   
   if (state.apiKey) {
     console.log(`🔄 API key existe, carregando modelos...`);
-    await updateModelsUI();
+  await updateModelsUI();
   } else {
     console.log(`🔄 Nenhuma API key, mostrando mensagem...`);
     modelSelect.innerHTML = '<option value="">Configure a API Key</option>';
@@ -1251,17 +1251,12 @@ Responda APENAS com o JSON do mapa completo, sem explicações.`;
       temperature: 0.3
     });
 
-    // Tentar extrair JSON da resposta
-    const jsonMatch = response.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      const newMap = JSON.parse(jsonMatch[0]);
+    // Tentar extrair e validar JSON da resposta
+    const newMap = extractAndValidateJSON(response);
       state.currentMap = newMap;
       await renderAndAttach(newMap, true); // Preservar viewport
       addFloatingChatMessage('assistant', `✅ Nó adicionado com sucesso!`);
       floatingChatInput.value = '';
-    } else {
-      throw new Error('Resposta da IA não contém JSON válido');
-    }
 
   } catch (error) {
     console.error('Erro ao adicionar nó:', error);
@@ -1311,17 +1306,12 @@ Responda APENAS com o JSON do mapa completo, sem explicações.`;
       temperature: 0.3
     });
 
-    // Tentar extrair JSON da resposta
-    const jsonMatch = response.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      const expandedMap = JSON.parse(jsonMatch[0]);
+    // Tentar extrair e validar JSON da resposta
+    const expandedMap = extractAndValidateJSON(response);
       state.currentMap = expandedMap;
       await renderAndAttach(expandedMap, true); // Preservar viewport
       addFloatingChatMessage('assistant', `✅ Nó "${prompt}" expandido com sucesso!`);
       floatingChatInput.value = '';
-    } else {
-      throw new Error('Resposta da IA não contém JSON válido');
-    }
 
   } catch (error) {
     console.error('Erro ao expandir nó:', error);
@@ -1413,9 +1403,14 @@ async function handleFloatingChatSend() {
       state.currentMap = mapData;
       await renderAndAttach(mapData);
       
-      // Atualizar UI
+      // 💾 AUTO-SAVE do mapa inicial criado pela IA
+      const autoSaveId = window.Storage.GeraMapas.saveMap({ title: mapData.title, data: mapData });
+      state.currentMapId = autoSaveId;
     deleteMapBtn.disabled = false;
-    state.currentMapId = null;
+      console.log(`💾 Auto-salvo: "${mapData.title}" (ID: ${autoSaveId})`);
+      
+      // Atualizar UI
+      loadSavedList();
     modelSelector.classList.add('open');
     
     // ✅ CORREÇÃO: Atualizar estado do menu mobile
@@ -2414,7 +2409,7 @@ document.addEventListener('click', (e) => {
     if (mobilePopup) {
       mobilePopup.classList.remove('show');
       setActiveNavBtn(null);
-      console.log('❌ Popup móvel fechado pelo botão X (click)');
+      // console.log('❌ Popup móvel fechado pelo botão X (click)'); // ✅ Removido para reduzir logs
     }
     
     if (fixedPopup) {
@@ -2427,7 +2422,7 @@ document.addEventListener('click', (e) => {
   if (e.target && e.target.classList && e.target.classList.contains('mobile-popup')) {
     e.target.classList.remove('show');
     setActiveNavBtn(null);
-    console.log('❌ Popup móvel fechado clicando fora');
+    // console.log('❌ Popup móvel fechado clicando fora'); // ✅ Removido para reduzir logs
   }
 });
 
@@ -2445,7 +2440,7 @@ document.addEventListener('touchend', (e) => {
     if (mobilePopup) {
       mobilePopup.classList.remove('show');
       setActiveNavBtn(null);
-      console.log('❌ Popup móvel fechado pelo botão X (touch)');
+      // console.log('❌ Popup móvel fechado pelo botão X (touch)'); // ✅ Removido para reduzir logs
     }
     
     if (fixedPopup) {
@@ -2472,7 +2467,7 @@ document.addEventListener('touchend', (e) => {
     e.preventDefault();
     e.target.classList.remove('show');
     setActiveNavBtn(null);
-    console.log('❌ Popup móvel fechado tocando fora');
+    // console.log('❌ Popup móvel fechado tocando fora'); // ✅ Removido para reduzir logs
   }
 });
 
@@ -5347,14 +5342,34 @@ async function generateNodeContext(node, mapJson, nodeLabel) {
 
 /* Generate suggested questions about the node */
 async function generateSuggestedQuestions(nodeContext) {
-  const baseQuestions = [
-    `Explique o que é ${nodeContext.label}`,
-    `Qual a importância de ${nodeContext.label}?`,
-    `Como ${nodeContext.label} funciona?`,
-    `Quais são os principais conceitos sobre ${nodeContext.label}?`
-  ];
+  // Perguntas baseadas no conteúdo do nó
+  const baseQuestions = [];
   
-  // TODO: Potentially enhance with AI-generated questions
+  // Se tem resumo, usar contexto do resumo
+  if (nodeContext.summary) {
+    const summaryShort = nodeContext.summary.substring(0, 200);
+    baseQuestions.push(
+      `Explique o conceito principal de ${nodeContext.label}`,
+      `Quais são os pontos mais importantes sobre ${nodeContext.label}?`,
+      `Como posso aplicar ${nodeContext.label} na prática?`
+    );
+  }
+  
+  // Se tem filhos, perguntar sobre relacionamento
+  if (nodeContext.children && nodeContext.children.length > 0) {
+    baseQuestions.push(`Qual a relação entre ${nodeContext.label} e seus elementos?`);
+  }
+  
+  // Perguntas genéricas se não tem contexto suficiente
+  if (baseQuestions.length === 0) {
+    baseQuestions.push(
+      `O que é ${nodeContext.label}?`,
+      `Por que ${nodeContext.label} é importante?`,
+      `Como funciona ${nodeContext.label}?`,
+      `Principais conceitos de ${nodeContext.label}`
+    );
+  }
+  
   return baseQuestions.slice(0, 4);
 }
 
@@ -5582,6 +5597,50 @@ function formatResponseFallback(text) {
   return html;
 }
 
+/* Utility: Extract and validate JSON from AI response */
+function extractAndValidateJSON(response) {
+  try {
+    // Tentar parsear direto primeiro
+    const directParse = JSON.parse(response);
+    return directParse;
+  } catch (e) {
+    console.log('⚠️ Parse direto falhou, tentando extrair JSON...');
+  }
+  
+  try {
+    // Tentar extrair JSON usando regex mais inteligente
+    // Procurar por um JSON válido começando por {
+    const jsonMatches = response.match(/\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}/g);
+    
+    if (jsonMatches && jsonMatches.length > 0) {
+      // Tentar o último match (provavelmente o JSON completo)
+      for (let i = jsonMatches.length - 1; i >= 0; i--) {
+        try {
+          const parsed = JSON.parse(jsonMatches[i]);
+          console.log(`✅ JSON extraído com sucesso (tentativa ${jsonMatches.length - i})`);
+          return parsed;
+        } catch (e) {
+          console.log(`⚠️ Tentativa ${jsonMatches.length - i} falhou:`, e.message);
+        }
+      }
+    }
+    
+    // Fallback: tentar extrair tudo entre primeiro { e último }
+    const fallbackMatch = response.match(/\{[\s\S]*\}/);
+    if (fallbackMatch) {
+      const parsed = JSON.parse(fallbackMatch[0]);
+      console.log('✅ JSON extraído (fallback)');
+      return parsed;
+    }
+    
+    throw new Error('Nenhum JSON válido encontrado na resposta da IA');
+  } catch (error) {
+    console.error('❌ Erro ao extrair JSON:', error);
+    console.log('📝 Resposta da IA:', response.substring(0, 500));
+    throw new Error(`Erro ao processar resposta da IA: ${error.message}. Resposta: ${response.substring(0, 200)}`);
+  }
+}
+
 /* Create node from chat suggestion in IA Tutor */
 async function createNodeFromSuggestion(nodeSuggestion, currentNodeLabel, mapJson, chatMessagesElement) {
   if (!state.currentMap) {
@@ -5627,15 +5686,13 @@ Responda APENAS com o JSON do mapa completo, sem explicações.`;
       temperature: 0.3
     });
 
-    // Tentar extrair JSON da resposta
-    const jsonMatch = response.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      const newMap = JSON.parse(jsonMatch[0]);
-      
-      // ✅ VALIDAÇÃO: Verificar se o mapa tem estrutura válida
-      if (!newMap || !newMap.nodes || !Array.isArray(newMap.nodes) || !newMap.nodes[0]) {
-        throw new Error('O mapa retornado não tem estrutura válida (nodes[0] indefinido). Resposta da IA: ' + response.substring(0, 200));
-      }
+    // Tentar extrair e validar JSON da resposta
+    const newMap = extractAndValidateJSON(response);
+    
+    // ✅ VALIDAÇÃO: Verificar se o mapa tem estrutura válida
+    if (!newMap || !newMap.nodes || !Array.isArray(newMap.nodes) || !newMap.nodes[0]) {
+      throw new Error('O mapa retornado não tem estrutura válida (nodes[0] indefinido). Resposta da IA: ' + response.substring(0, 200));
+    }
       
       // ✅ VERIFICAR SE É UM MAPA NOVO OU APENAS UPDATE
       // Se a IA retornou só o nó novo, precisamos integrá-lo ao mapa existente
@@ -5694,9 +5751,6 @@ Responda APENAS com o JSON do mapa completo, sem explicações.`;
       });
       
       console.log('✅ Nó criado com sucesso via IA Tutor');
-    } else {
-      throw new Error('Resposta da IA não contém JSON válido');
-    }
 
   } catch (error) {
     console.error('Erro ao criar nó a partir da sugestão:', error);
@@ -6538,6 +6592,78 @@ resetThemeBtn.addEventListener('click', () => {
   window.Storage.GeraMapas.saveSettings({ provider: state.provider, model: state.model, theme: state.theme, layout: state.layout });
 });
 
+// Chat color controls
+const chatBotBgColor = document.getElementById('chatBotBgColor');
+const chatBotTextColor = document.getElementById('chatBotTextColor');
+const chatBotBorderColor = document.getElementById('chatBotBorderColor');
+const chatUserBgColor = document.getElementById('chatUserBgColor');
+const chatUserTextColor = document.getElementById('chatUserTextColor');
+const resetChatBotColorsBtn = document.getElementById('resetChatBotColorsBtn');
+const resetChatUserColorsBtn = document.getElementById('resetChatUserColorsBtn');
+
+// Initialize chat colors from localStorage
+if (chatBotBgColor) {
+  const persisted = window.Storage.GeraMapas.loadSettings();
+  if (persisted && persisted.chatColors) {
+    chatBotBgColor.value = persisted.chatColors.botBg || '#e3f2fd';
+    chatBotTextColor.value = persisted.chatColors.botText || '#1976d2';
+    chatBotBorderColor.value = persisted.chatColors.botBorder || '#90caf9';
+    chatUserBgColor.value = persisted.chatColors.userBg || '#000000';
+    chatUserTextColor.value = persisted.chatColors.userText || '#ffffff';
+    
+    // Apply colors immediately
+    document.documentElement.style.setProperty('--chat-bot-bg', persisted.chatColors.botBg);
+    document.documentElement.style.setProperty('--chat-bot-text', persisted.chatColors.botText);
+    document.documentElement.style.setProperty('--chat-bot-border', persisted.chatColors.botBorder);
+    document.documentElement.style.setProperty('--chat-user-bg', persisted.chatColors.userBg);
+    document.documentElement.style.setProperty('--chat-user-text', persisted.chatColors.userText);
+  }
+}
+
+// Apply chat colors on change
+if (chatBotBgColor) {
+  [chatBotBgColor, chatBotTextColor, chatBotBorderColor, chatUserBgColor, chatUserTextColor].forEach(input => {
+    if (input) {
+      input.addEventListener('input', () => {
+        document.documentElement.style.setProperty('--chat-bot-bg', chatBotBgColor.value);
+        document.documentElement.style.setProperty('--chat-bot-text', chatBotTextColor.value);
+        document.documentElement.style.setProperty('--chat-bot-border', chatBotBorderColor.value);
+        document.documentElement.style.setProperty('--chat-user-bg', chatUserBgColor.value);
+        document.documentElement.style.setProperty('--chat-user-text', chatUserTextColor.value);
+        
+        // Save to localStorage
+        const settings = window.Storage.GeraMapas.loadSettings() || {};
+        settings.chatColors = {
+          botBg: chatBotBgColor.value,
+          botText: chatBotTextColor.value,
+          botBorder: chatBotBorderColor.value,
+          userBg: chatUserBgColor.value,
+          userText: chatUserTextColor.value
+        };
+        localStorage.setItem('mm.settings.v1', JSON.stringify(settings));
+      });
+    }
+  });
+}
+
+// Reset buttons
+if (resetChatBotColorsBtn) {
+  resetChatBotColorsBtn.addEventListener('click', () => {
+    chatBotBgColor.value = '#e3f2fd';
+    chatBotTextColor.value = '#1976d2';
+    chatBotBorderColor.value = '#90caf9';
+    chatBotBgColor.dispatchEvent(new Event('input'));
+  });
+}
+
+if (resetChatUserColorsBtn) {
+  resetChatUserColorsBtn.addEventListener('click', () => {
+    chatUserBgColor.value = '#000000';
+    chatUserTextColor.value = '#ffffff';
+    chatUserBgColor.dispatchEvent(new Event('input'));
+  });
+}
+
 layoutTemplateSelect.addEventListener('change', (e) => {
   applyLayoutPreset(e.target.value);
 });
@@ -6904,7 +7030,7 @@ function zoomToFit() {
 
 // Event listeners dos botões de zoom
 zoomInBtn.addEventListener('click', () => {
-  performZoom(1.2);
+    performZoom(1.1);
   
   // Feedback visual
   zoomInBtn.style.transform = 'scale(0.9)';
@@ -6914,7 +7040,7 @@ zoomInBtn.addEventListener('click', () => {
 });
 
 zoomOutBtn.addEventListener('click', () => {
-  performZoom(0.8);
+    performZoom(0.91);
   
   // Feedback visual
   zoomOutBtn.style.transform = 'scale(0.9)';
@@ -6950,11 +7076,11 @@ document.addEventListener('keydown', (e) => {
       case '+':
       case '=':
         e.preventDefault();
-        performZoom(1.2);
+          performZoom(1.1);
         break;
       case '-':
         e.preventDefault();
-        performZoom(0.8);
+          performZoom(0.91);
         break;
       case '0':
         e.preventDefault();
@@ -8709,13 +8835,8 @@ function downloadActiveTabContent(nodeSlider, nodeLabel) {
     const filename = `${nodeLabel.replace(/[^a-zA-Z0-9]/g, '_')}_${tabName}.txt`;
     
     // 6. Fazer download usando função simples (APENAS PARA ABAS)
-    const success = simpleDownload(fullContent, filename);
-    
-    if (success) {
+    simpleDownload(fullContent, filename);
       console.log('✅ Download das abas concluído com sucesso!');
-    } else {
-      alert('❌ Erro ao fazer download das abas. Tente novamente.');
-    }
     
   } catch (error) {
     console.error('❌ Erro na função de download:', error);
@@ -8931,62 +9052,56 @@ function initCoffeeIcon() {
     // Verificar se há um mapa ativo
     const hasActiveMap = state.currentMap && state.currentMap.nodes && state.currentMap.nodes.length > 0;
     
-    console.log('🔄 updateMobileMenuState() CHAMADA');
-    console.log('   - Mapa ativo:', hasActiveMap);
-    console.log('   - Nós no mapa:', state.currentMap ? state.currentMap.nodes.length : 0);
+    // console.log('🔄 updateMobileMenuState() CHAMADA'); // ✅ Removido para reduzir logs
+    // console.log('   - Mapa ativo:', hasActiveMap);
+    // console.log('   - Nós no mapa:', state.currentMap ? state.currentMap.nodes.length : 0);
     
     if (hasActiveMap) {
       header.classList.add('has-map');
-      console.log('📱 Menu EXPANDIDO - mapa ativo detectado');
+      // console.log('📱 Menu EXPANDIDO - mapa ativo detectado'); // ✅ Removido
       
       // ✅ CORREÇÃO: Garantir que botões específicos sejam visíveis
       if (mapModelsBtn) {
         mapModelsBtn.style.display = 'flex';
         mapModelsBtn.style.setProperty('display', 'flex', 'important');
-        console.log('   ✅ mapModelsBtn (🗺️ Modelos): VISÍVEL');
-      } else {
-        console.log('   ❌ mapModelsBtn não encontrado!');
+        // console.log('   ✅ mapModelsBtn (🗺️ Modelos): VISÍVEL'); // ✅ Removido
       }
       
       if (markerBtn) {
         markerBtn.style.display = 'flex';
         markerBtn.style.setProperty('display', 'flex', 'important');
-        console.log('   ✅ markerBtn (🖍️ Marcador): VISÍVEL');
-      } else {
-        console.log('   ❌ markerBtn não encontrado!');
+        // console.log('   ✅ markerBtn (🖍️ Marcador): VISÍVEL'); // ✅ Removido
       }
       
       if (lapisBtn) {
         lapisBtn.style.display = 'flex';
         lapisBtn.style.setProperty('display', 'flex', 'important');
-        console.log('   ✅ lapisBtn (✏️ Lápis): VISÍVEL');
-      } else {
-        console.log('   ❌ lapisBtn não encontrado!');
+        // console.log('   ✅ lapisBtn (✏️ Lápis): VISÍVEL'); // ✅ Removido
       }
       
-      console.log('✅ Botões específicos: modelos, marcador e lápis VISÍVEIS');
+      // console.log('✅ Botões específicos: modelos, marcador e lápis VISÍVEIS'); // ✅ Removido
     } else {
       header.classList.remove('has-map');
-      console.log('📱 Menu COMPACTO - nenhum mapa ativo');
+      // console.log('📱 Menu COMPACTO - nenhum mapa ativo'); // ✅ Removido
       
       // ✅ CORREÇÃO: Ocultar botões específicos quando não há mapa
       if (mapModelsBtn) {
         mapModelsBtn.style.display = 'none';
         mapModelsBtn.style.setProperty('display', 'none', 'important');
-        console.log('   ❌ mapModelsBtn (🗺️ Modelos): OCULTO');
+        // console.log('   ❌ mapModelsBtn (🗺️ Modelos): OCULTO'); // ✅ Removido
       }
       if (markerBtn) {
         markerBtn.style.display = 'none';
         markerBtn.style.setProperty('display', 'none', 'important');
-        console.log('   ❌ markerBtn (🖍️ Marcador): OCULTO');
+        // console.log('   ❌ markerBtn (🖍️ Marcador): OCULTO'); // ✅ Removido
       }
       if (lapisBtn) {
         lapisBtn.style.display = 'none';
         lapisBtn.style.setProperty('display', 'none', 'important');
-        console.log('   ❌ lapisBtn (✏️ Lápis): OCULTO');
+        // console.log('   ❌ lapisBtn (✏️ Lápis): OCULTO'); // ✅ Removido
       }
       
-      console.log('❌ Botões específicos: modelos, marcador e lápis OCULTOS');
+      // console.log('❌ Botões específicos: modelos, marcador e lápis OCULTOS'); // ✅ Removido
     }
 }
 

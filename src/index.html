@@ -245,8 +245,13 @@
             </div>
             <div class="card-body">
               <label class="label">API Key</label>
-              <input id="apiKeyInput" type="password" placeholder="Insira sua API Key" />
-              <button id="saveApiBtn" class="btn primary">Salvar API</button>
+              <div style="display: flex; gap: 8px;">
+                <input id="apiKeyInput" type="password" placeholder="Insira sua API Key" style="flex: 1;" />
+                <button id="deleteApiBtn" class="btn secondary" title="Excluir API Key">🗑️</button>
+              </div>
+              <div style="display: flex; gap: 8px; margin-top: 8px;">
+                <button id="saveApiBtn" class="btn primary">Salvar API</button>
+              </div>
               <p id="apiStatus" class="hint"></p>
             </div>
           </div>

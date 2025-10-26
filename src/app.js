@@ -288,12 +288,18 @@ state.currentMapId = null;
 const persisted = window.Storage.GeraMapas.loadSettings();
 if (persisted) {
   state.provider = persisted.provider || state.provider;
-  state.apiKey = persisted.apiKey || '';
+  // Carregar API key do provedor atual
+  if (state.provider && persisted.apiKeys) {
+    state.apiKey = persisted.apiKeys[state.provider] || '';
+  } else {
+    state.apiKey = persisted.apiKey || '';
+  }
   state.model = persisted.model || '';
   providerSelect.value = state.provider;
   apiKeyInput.value = state.apiKey ? '••••••••' : '';
 }
-updateModelsUI();
+// Apenas atualizar UI de modelos, não carregar ainda
+modelSelect.innerHTML = '<option value="">Selecione um modelo</option>';
 
 /* after state and DOM references are defined, add containers for overlays with extension safety */
 let overlaysRoot = null;
@@ -736,19 +742,96 @@ document.addEventListener('mouseup', (e) => {
 
 /* Events */
 providerSelect.addEventListener('change', async () => {
+  console.log(`🔄 ===== TROCANDO PROVEDOR =====`);
+  console.log(`🔄 Provedor anterior: ${state.provider}`);
+  
   state.provider = providerSelect.value;
-  window.Storage.GeraMapas.saveSettings({ provider: state.provider, apiKey: state.apiKey, model: '' });
+  console.log(`🔄 Provedor novo: ${state.provider}`);
+  
+  // Carregar API key do novo provedor
+  console.log(`🔄 Chamando getApiKey(${state.provider})`);
+  const loadedApiKey = window.Storage.GeraMapas.getApiKey(state.provider);
+  console.log(`🔄 API Key carregada:`, loadedApiKey ? 'CONFIGURADA' : 'VAZIA');
+  
+  state.apiKey = loadedApiKey;
+  apiKeyInput.value = state.apiKey ? '••••••••' : '';
+  
+  console.log(`🔄 State.apiKey agora é: "${state.apiKey}"`);
+  
+  window.Storage.GeraMapas.saveSettings({ provider: state.provider });
+  state.model = ''; // Reset modelo ao mudar provedor
   modelSelect.innerHTML = '<option value="">Carregando...</option>';
-  await updateModelsUI();
+  
+  if (state.apiKey) {
+    console.log(`🔄 API key existe, carregando modelos...`);
+    await updateModelsUI();
+  } else {
+    console.log(`🔄 Nenhuma API key, mostrando mensagem...`);
+    modelSelect.innerHTML = '<option value="">Configure a API Key</option>';
+    modelsStatus.textContent = '⚠️ Configure sua API Key para carregar modelos';
+    modelsStatus.style.color = 'var(--accent)';
+  }
+  
+  console.log(`🔄 ===== TROCA DE PROVEDOR CONCLUÍDA =====`);
 });
 
 saveApiBtn.addEventListener('click', async () => {
   const raw = apiKeyInput.value.trim();
-  state.apiKey = raw || state.apiKey; // allow keeping masked
-  window.Storage.GeraMapas.saveSettings({ provider: state.provider, apiKey: state.apiKey, model: state.model });
-  apiStatus.textContent = 'API Key salva.';
+  
+  if (!raw) {
+    apiStatus.textContent = '⚠️ API Key não pode estar vazia';
+    apiStatus.style.color = 'var(--accent)';
+    return;
+  }
+  
+  // Salvar API key para o provedor atual
+  window.Storage.GeraMapas.saveApiKey(state.provider, raw);
+  state.apiKey = raw;
+  window.Storage.GeraMapas.saveSettings({ model: state.model });
+  
+  apiStatus.textContent = '✅ API Key salva com sucesso!';
+  apiStatus.style.color = 'var(--success)';
+  
   await updateModelsUI();
 });
+
+// Botão para excluir API key
+if (document.getElementById('deleteApiBtn')) {
+  document.getElementById('deleteApiBtn').addEventListener('click', () => {
+    console.log(`🔴 ===== INICIANDO EXCLUSÃO DE API KEY =====`);
+    console.log(`🔴 Provedor atual: ${state.provider}`);
+    console.log(`🔴 API Key atual no state: ${state.apiKey ? 'CONFIGURADA' : 'VAZIA'}`);
+    
+    if (confirm(`Deseja realmente excluir a API Key do provedor ${state.provider.toUpperCase()}?`)) {
+      console.log(`🔴 Usuário confirmou exclusão`);
+      
+      // Excluir do storage
+      console.log(`🔴 Chamando deleteApiKey(${state.provider})`);
+      window.Storage.GeraMapas.deleteApiKey(state.provider);
+      
+      // Verificar após exclusão
+      const afterDelete = window.Storage.GeraMapas.getApiKey(state.provider);
+      console.log(`🔴 API Key após deleteApiKey:`, afterDelete);
+      
+      // Limpar UI
+      state.apiKey = '';
+      apiKeyInput.value = '';
+      modelSelect.innerHTML = '<option value="">Nenhum modelo disponível</option>';
+      modelsStatus.textContent = 'API Key excluída';
+      apiStatus.textContent = '✅ API Key excluída com sucesso';
+      apiStatus.style.color = 'var(--success)';
+      
+      // Forçar reset do modelo
+      state.model = '';
+      
+      console.log(`🔴 ===== EXCLUSÃO CONCLUÍDA =====`);
+      console.log(`🔴 State.apiKey agora é: "${state.apiKey}"`);
+      console.log(`🔴 Storage tem a key?: "${afterDelete}"`);
+    } else {
+      console.log(`🔴 Usuário cancelou exclusão`);
+    }
+  });
+}
 
 refreshModelsBtn.addEventListener('click', updateModelsUI);
 
@@ -1666,7 +1749,7 @@ if (specialistBtn) {
         console.log('✅ Chat Especialista fechado');
       } else {
         // Chat está fechado - abrir
-        showSpecialistChat();
+      showSpecialistChat();
         console.log('✅ Chat Especialista aberto');
       }
     }
@@ -2155,11 +2238,27 @@ async function renderAndAttach(map, preserveViewport = false) {
 async function updateModelsUI() {
   modelsStatus.textContent = '';
   modelSelect.innerHTML = '<option value="">Carregando modelos...</option>';
+  
   try {
-    // Only require provider (and API key for Groq) to fetch models
-    if (!state.provider) throw new Error('Selecione um provedor.');
-    if (state.provider === 'groq' && !state.apiKey) throw new Error('Defina e salve sua API Key da Groq para listar modelos.');
+    // ✅ VALIDAÇÃO: Verificar provedor
+    if (!state.provider) {
+      modelSelect.innerHTML = '<option value="">Selecione um provedor</option>';
+      modelsStatus.textContent = 'Selecione um provedor';
+      modelsStatus.style.color = 'var(--muted)';
+      return;
+    }
+    
+    // ✅ VALIDAÇÃO: API key obrigatória
+    if (!state.apiKey) {
+      modelSelect.innerHTML = '<option value="">Configure a API Key</option>';
+      modelsStatus.textContent = '⚠️ Configure sua API Key para carregar modelos';
+      modelsStatus.style.color = 'var(--accent)';
+      return;
+    }
+    
+    console.log(`🔄 Carregando modelos para ${state.provider}...`);
     const list = await window.AI.fetchModels(state.provider, state.apiKey);
+    
       modelSelect.innerHTML = '';
       for (const m of list) {
         const opt = document.createElement('option');
@@ -2167,21 +2266,28 @@ async function updateModelsUI() {
         opt.textContent = m.label;
         modelSelect.appendChild(opt);
       }
+    
       if (state.model && list.find(x => x.id === state.model)) {
         modelSelect.value = state.model;
-      } else {
-        state.model = modelSelect.value;
-      }
-    modelsStatus.textContent = `Modelos carregados (${list.length}).`;
-    window.Storage.GeraMapas.saveSettings({ provider: state.provider, apiKey: state.apiKey, model: state.model });
+    } else if (list.length > 0) {
+      state.model = list[0].id;
+      modelSelect.value = state.model;
+    }
+    
+    modelsStatus.textContent = `✅ ${list.length} modelos carregados`;
+    modelsStatus.style.color = 'var(--success)';
+    
+    window.Storage.GeraMapas.saveSettings({ provider: state.provider, model: state.model });
   } catch (e) {
+    console.error('Erro ao carregar modelos:', e);
     modelSelect.innerHTML = '<option value="">Erro ao carregar modelos</option>';
-    modelsStatus.textContent = e.message;
+    modelsStatus.textContent = `❌ ${e.message}`;
+    modelsStatus.style.color = 'var(--error)';
   }
 }
   modelSelect.addEventListener('change', () => {
     state.model = modelSelect.value;
-    window.Storage.GeraMapas.saveSettings({ provider: state.provider, apiKey: state.apiKey, model: state.model });
+    window.Storage.GeraMapas.saveSettings({ provider: state.provider, model: state.model });
   });
 
 function loadSavedList() {
@@ -3216,12 +3322,12 @@ async function showTooltipForNode(node, anchorEl, mapJson) {
       // Gerar novo resumo se não houver salvo ou parâmetros diferentes
       console.log(`🤖 Gerando novo resumo via IA: ${nodeLabel}`);
       markdown = await window.AI.chatPlain({
-        provider: state.provider,
-        apiKey: state.apiKey,
-        model: state.model,
-        message: prompt,
-        temperature: 0.2
-      });
+      provider: state.provider,
+      apiKey: state.apiKey,
+      model: state.model,
+      message: prompt,
+      temperature: 0.2
+    });
 
       // ✅ SALVAR RESUMO NO LOCALSTORAGE APÓS GERAÇÃO
       window.Storage.GeraMapas.saveSummary({
@@ -3413,6 +3519,7 @@ async function showTooltipForNode(node, anchorEl, mapJson) {
               <button data-tab="palestra" class="tab">Palestra</button>
               <button data-tab="roteiro" class="tab">Roteiro Curto</button>
               <button data-tab="exercicio" class="tab">Exercício</button>
+              <button data-tab="ia-tutor" class="tab">🤖 IA Tutor</button>
               <button id="downloadTabBtn" class="tab download-tab" title="Download conteúdo da aba ativa">📥</button>
             </div>
             <div class="node-tabs-body">
@@ -3482,6 +3589,21 @@ async function showTooltipForNode(node, anchorEl, mapJson) {
                 </div>
                 <div class="ex-output" style="margin-top:12px"></div>
               </div>
+              <div data-tab-content="ia-tutor" class="tab-content" data-loading="0">
+                <div class="ia-tutor-container">
+                  <div class="ia-tutor-suggestions">
+                    <div class="ia-suggestions-header">💡 Perguntas sugeridas</div>
+                    <div class="ia-suggestions-list" id="iaSuggestionsList"></div>
+                  </div>
+                  <div class="ia-tutor-chat">
+                    <div class="chat-messages" id="iaChatMessages"></div>
+                    <div class="chat-input-container">
+                      <input type="text" class="chat-input" id="iaChatInput" placeholder="Digite sua pergunta sobre este nó..." />
+                      <button class="btn primary chat-send-btn" id="iaSendBtn">Enviar</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         `;
@@ -3511,7 +3633,7 @@ async function showTooltipForNode(node, anchorEl, mapJson) {
             return false;
           }
 
-
+          
           const btn = ev.target.closest('button[data-tab]');
           if (!btn) return;
           const tab = btn.dataset.tab;
@@ -3537,6 +3659,14 @@ async function showTooltipForNode(node, anchorEl, mapJson) {
             // Roteiro Curto: displays model selection UI immediately
             renderScriptModelSelector(target, nodeLabel, mapTitle, renderMd);
             target.dataset.loading = '1'; // Mark static UI as loaded
+            return;
+          }
+          if (tab === 'ia-tutor') {
+            // IA Tutor: inicializar chat e sugestões
+            if (target.dataset.loading !== '1') {
+              initIATutorChat(target, node, mapJson, nodeLabel, mapTitle);
+              target.dataset.loading = '1';
+            }
             return;
           }
           if (tab === 'exercicio') {
@@ -4803,7 +4933,7 @@ function applyLayoutPreset(name) {
   if (name === 'spacious') document.documentElement.classList.add('layout-spacious');
   // persist
   state.layout = name;
-  window.Storage.GeraMapas.saveSettings({ provider: state.provider, apiKey: state.apiKey, model: state.model, theme: state.theme, layout: state.layout });
+  window.Storage.GeraMapas.saveSettings({ provider: state.provider, model: state.model, theme: state.theme, layout: state.layout });
 }
 
 
@@ -5028,6 +5158,564 @@ async function generateShortScript(key, targetElement, nodeLabel, mapTitle, rend
     }
 }
 
+/* IA Tutor Chat initialization */
+async function initIATutorChat(container, node, mapJson, nodeLabel, mapTitle) {
+  const suggestionsList = container.querySelector('#iaSuggestionsList');
+  const chatMessages = container.querySelector('#iaChatMessages');
+  const chatInput = container.querySelector('#iaChatInput');
+  const sendBtn = container.querySelector('#iaSendBtn');
+  
+  // Clear previous content
+  chatMessages.innerHTML = '';
+  suggestionsList.innerHTML = '';
+  
+  // Generate initial context about the node
+  const nodeContext = await generateNodeContext(node, mapJson, nodeLabel);
+  
+  // Generate 3-4 suggested questions
+  const suggestions = await generateSuggestedQuestions(nodeContext);
+  
+  // Render suggestions
+  suggestionsList.innerHTML = suggestions.map((q, idx) => 
+    `<button class="suggestion-btn" data-question="${idx}">${q}</button>`
+  ).join('');
+  
+  // Attach click listeners to suggestions
+  suggestionsList.querySelectorAll('.suggestion-btn').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      const questionIdx = parseInt(btn.dataset.question);
+      const question = suggestions[questionIdx];
+      chatInput.value = question;
+      await sendMessage();
+    });
+  });
+  
+  // Store sendMessage function reference to prevent duplicate listeners
+  let sendMessageHandler = null;
+  
+  // Send button listener
+  async function sendMessage() {
+    const message = chatInput.value.trim();
+    if (!message) return;
+    
+    // Add user message to chat
+    const userMsgDiv = document.createElement('div');
+    userMsgDiv.className = 'chat-message user-message';
+    userMsgDiv.textContent = message;
+    chatMessages.appendChild(userMsgDiv);
+    
+    // Clear input
+    chatInput.value = '';
+    chatInput.disabled = true;
+    sendBtn.disabled = true;
+    
+    // Add loading message
+    const loadingDiv = document.createElement('div');
+    loadingDiv.className = 'chat-message bot-message loading';
+    loadingDiv.innerHTML = '<div class="loading-dots">⏳ Gerando resposta...</div>';
+    chatMessages.appendChild(loadingDiv);
+    // Scroll smoothly to show new message while keeping input visible
+    requestAnimationFrame(() => {
+      chatMessages.scrollTop = Math.min(chatMessages.scrollHeight - chatMessages.clientHeight, chatMessages.scrollTop + 200);
+    });
+    
+    try {
+      // Generate AI response (use fresh nodeContext)
+      const response = await generateIATutorResponse(message, nodeContext, mapJson);
+      
+      // Remove loading
+      loadingDiv.remove();
+      
+      // Add bot response
+      const botMsgDiv = document.createElement('div');
+      botMsgDiv.className = 'chat-message bot-message';
+      botMsgDiv.innerHTML = formatResponse(response);
+      chatMessages.appendChild(botMsgDiv);
+      
+      // Check if response suggests creating a node
+      if (response.shouldCreateNode && response.nodeSuggestion) {
+        const suggestionDiv = document.createElement('div');
+        suggestionDiv.className = 'chat-suggestion';
+        suggestionDiv.innerHTML = `
+          <strong>💡 Sugestão:</strong> ${response.nodeSuggestion}
+          <button class="btn small create-node-btn">Criar nó sobre isso</button>
+        `;
+        chatMessages.appendChild(suggestionDiv);
+        
+        // Add node creation listener
+        suggestionDiv.querySelector('.create-node-btn').addEventListener('click', async () => {
+          await createNodeFromSuggestion(response.nodeSuggestion, nodeLabel, mapJson, chatMessages);
+        });
+      }
+      
+      // Show related nodes only if user's question is off-topic
+      if (response.showRelatedNodes && response.relatedNodes && response.relatedNodes.length > 0) {
+        const relatedDiv = document.createElement('div');
+        relatedDiv.className = 'chat-message bot-message related-nodes';
+        relatedDiv.innerHTML = `
+          <strong>📍 Nós relacionados no mapa:</strong>
+          <ul style="margin: 8px 0 0 20px; padding: 0;">
+            ${response.relatedNodes.map(n => `<li>${n.label} <span style="opacity: 0.7; font-size: 0.9em;">(${n.path})</span></li>`).join('')}
+          </ul>
+        `;
+        chatMessages.appendChild(relatedDiv);
+      }
+    } catch (err) {
+      loadingDiv.remove();
+      const errorDiv = document.createElement('div');
+      errorDiv.className = 'chat-message bot-message error';
+      errorDiv.textContent = `❌ Erro: ${err.message}`;
+      chatMessages.appendChild(errorDiv);
+      console.error('Error in IA Tutor chat:', err);
+    } finally {
+      chatInput.disabled = false;
+      sendBtn.disabled = false;
+      chatInput.focus();
+      // Only scroll a bit to keep input visible, not to the absolute bottom
+      requestAnimationFrame(() => {
+        chatMessages.scrollTop = Math.min(chatMessages.scrollHeight - chatMessages.clientHeight, chatMessages.scrollTop + 300);
+      });
+    }
+  }
+  
+  // Remove old listeners if they exist
+  if (sendMessageHandler) {
+    sendBtn.removeEventListener('click', sendMessageHandler);
+    chatInput.removeEventListener('keypress', sendMessageHandler);
+  }
+  
+  // Store new handler
+  sendMessageHandler = (e) => {
+    if (e.key === 'Enter' || !e.key) {
+      sendMessage();
+    }
+  };
+  
+  sendBtn.addEventListener('click', sendMessageHandler);
+  chatInput.addEventListener('keypress', sendMessageHandler);
+  
+  // Show welcome message
+  const welcomeMsg = document.createElement('div');
+  welcomeMsg.className = 'chat-message bot-message welcome';
+  welcomeMsg.innerHTML = `
+    <div class="welcome-header">👋 Olá! Sou seu IA Tutor</div>
+    <div class="welcome-text">Posso conversar sobre <strong>${nodeLabel}</strong> e tudo relacionado a esse nó no mapa <strong>${mapTitle}</strong>.</div>
+    <div class="welcome-tip">💡 Dica: Clique em uma das perguntas sugeridas para começar!</div>
+  `;
+  chatMessages.appendChild(welcomeMsg);
+}
+
+/* Generate context about the node for IA Tutor */
+async function generateNodeContext(node, mapJson, nodeLabel) {
+  // Collect info about the node
+  const nodeData = {
+    label: nodeLabel,
+    summary: '',
+    parents: [],
+    children: []
+  };
+  
+  // Try to get summary from localStorage
+  const savedSummary = window.Storage?.GeraMapas?.loadSummary(nodeLabel, mapJson.title);
+  if (savedSummary && savedSummary.summary) {
+    nodeData.summary = savedSummary.summary;
+  }
+  
+  // Find parents and children in the map
+  function walkTree(currentNode, path = []) {
+    if (!currentNode) return null;
+    if (currentNode.label === nodeLabel) {
+      return { found: true, path, node: currentNode };
+    }
+    if (currentNode.children) {
+      for (const child of currentNode.children) {
+        const result = walkTree(child, [...path, currentNode.label]);
+        if (result) return result;
+      }
+    }
+    return null;
+  }
+  
+  const result = walkTree(mapJson.nodes[0]);
+  if (result) {
+    nodeData.parents = result.path;
+    nodeData.children = (result.node.children || []).map(c => c.label);
+  }
+  
+  return nodeData;
+}
+
+/* Generate suggested questions about the node */
+async function generateSuggestedQuestions(nodeContext) {
+  const baseQuestions = [
+    `Explique o que é ${nodeContext.label}`,
+    `Qual a importância de ${nodeContext.label}?`,
+    `Como ${nodeContext.label} funciona?`,
+    `Quais são os principais conceitos sobre ${nodeContext.label}?`
+  ];
+  
+  // TODO: Potentially enhance with AI-generated questions
+  return baseQuestions.slice(0, 4);
+}
+
+/* Generate IA Tutor response */
+async function generateIATutorResponse(question, nodeContext, mapJson) {
+  // Check if AI is configured
+  if (!window.AI || typeof window.AI.chatPlain !== 'function') {
+    throw new Error('Modelo de IA não disponível. Configure uma API key nas configurações.');
+  }
+  
+  // Check if provider and API key are set
+  if (!state.provider || !state.apiKey) {
+    throw new Error('Configure uma API key nas configurações para usar o IA Tutor.');
+  }
+  
+  // Search for related nodes in the map
+  const relatedNodes = searchMapForTopic(question, mapJson, nodeContext.label);
+  
+  // Build comprehensive context including map search results
+  let contextPrompt = `
+Você é um IA Tutor especializado em explicar conceitos de um mapa mental.
+
+CONTEXTO DO NÓ ATUAL:
+- Nome: ${nodeContext.label}
+- Resumo: ${nodeContext.summary || 'Não disponível'}
+- Nós pais: ${nodeContext.parents.join(' → ') || 'Raiz do mapa'}
+- Nós filhos: ${nodeContext.children.join(', ') || 'Nenhum'}
+
+${relatedNodes.length > 0 ? `\nNÓS RELACIONADOS NO MAPA:\n${relatedNodes.map((n, i) => `- ${i + 1}. ${n.label} (${n.path}`).join('\n')}` : ''}
+
+REGRAS IMPORTANTES:
+1. Você deve responder APENAS sobre ${nodeContext.label} e assuntos diretamente relacionados.
+2. Se a pergunta do usuário NÃO estiver relacionada a ${nodeContext.label}, você deve:
+   ${relatedNodes.length > 0 ? 
+     `- Informar que sua função é falar sobre ${nodeContext.label}
+   - Sugerir que o usuário verifique os nós relacionados listados acima
+   - Se nenhum nó relacionado for encontrado, sugerir criar um novo nó sobre esse assunto` :
+     `- Informar que sua função é falar sobre ${nodeContext.label}
+   - Sugerir onde no mapa o usuário pode encontrar essa informação
+   - Se a informação não existir no mapa, sugerir criar um novo nó sobre esse assunto`}
+3. Use linguagem clara e didática.
+4. Faça conexões com os nós pais e filhos quando relevante.
+5. Seja conciso mas completo.
+
+PERGUNTA DO USUÁRIO:
+${question}
+
+RESPOSTA (em formato de mensagem):`;
+
+  const response = await window.AI.chatPlain({
+    provider: state.provider,
+    apiKey: state.apiKey,
+    model: state.model,
+    message: contextPrompt,
+    temperature: 0.2
+  });
+  
+  // Parse response to detect suggestions
+  const shouldCreateNode = response.includes('criar') || response.includes('novo nó');
+  const nodeSuggestion = shouldCreateNode ? extractNodeSuggestion(response) : '';
+  
+  // Detect if response indicates the question is off-topic
+  const isOffTopic = response.toLowerCase().includes('não posso responder') || 
+                     response.toLowerCase().includes('sua função é') ||
+                     response.toLowerCase().includes('verifique os nós relacionados');
+  
+  return {
+    text: response,
+    shouldCreateNode,
+    nodeSuggestion,
+    relatedNodes: relatedNodes.slice(0, 3), // Return top 3 related nodes
+    showRelatedNodes: isOffTopic && relatedNodes.length > 0 // Only show if question is off-topic and nodes found
+  };
+}
+
+/* Search the map for nodes related to a topic */
+function searchMapForTopic(query, mapJson, excludeNode) {
+  const results = [];
+  const queryLower = query.toLowerCase();
+  const keywords = queryLower.split(/\s+/).filter(w => w.length > 2);
+  
+  function walkTree(node, path = '') {
+    if (!node) return;
+    
+    const currentNodePath = path ? `${path} → ${node.label}` : node.label;
+    
+    // Skip the current node
+    if (node.label === excludeNode) {
+      if (node.children) {
+        node.children.forEach(child => walkTree(child, currentNodePath));
+      }
+      return;
+    }
+    
+    // Check if node label or children contain keywords
+    const nodeLabelLower = node.label.toLowerCase();
+    let relevance = 0;
+    
+    // Exact match
+    if (nodeLabelLower === queryLower) {
+      relevance = 100;
+    }
+    // Contains query
+    else if (nodeLabelLower.includes(queryLower)) {
+      relevance = 80;
+    }
+    // Keyword matches
+    else {
+      keywords.forEach(kw => {
+        if (nodeLabelLower.includes(kw)) {
+          relevance += 20;
+        }
+      });
+    }
+    
+    // Check children
+    if (node.children && node.children.length > 0) {
+      node.children.forEach(child => {
+        const childLower = child.label.toLowerCase();
+        if (childLower.includes(queryLower) || keywords.some(kw => childLower.includes(kw))) {
+          relevance += 10;
+        }
+      });
+    }
+    
+    // Only add if relevant
+    if (relevance > 0) {
+      results.push({
+        label: node.label,
+        path: currentNodePath,
+        relevance
+      });
+    }
+    
+    // Continue searching children
+    if (node.children) {
+      node.children.forEach(child => walkTree(child, currentNodePath));
+    }
+  }
+  
+  if (mapJson.nodes && mapJson.nodes[0]) {
+    walkTree(mapJson.nodes[0]);
+  }
+  
+  // Sort by relevance and return
+  return results.sort((a, b) => b.relevance - a.relevance);
+}
+
+function extractNodeSuggestion(response) {
+  // Try to extract suggested node topic from response
+  const match = response.match(/criar.*?nó.*?(?:sobre|para|com)(.*?)(?:\.|$|,)/i);
+  return match ? match[1].trim() : '';
+}
+
+function formatResponse(response) {
+  // Handle both string and object responses
+  const text = typeof response === 'string' ? response : (response.text || response);
+  
+  // Use marked for full markdown support if available, otherwise use simple formatting
+  if (window.marked) {
+    try {
+      const markedOptions = {
+        mangle: false,
+        headerIds: false,
+        headerPrefix: '',
+        breaks: true, // Enable line breaks
+        gfm: true // GitHub Flavored Markdown (for emoji support)
+      };
+      
+      // Configure marked
+      if (window.marked.setOptions) {
+        window.marked.setOptions(markedOptions);
+      }
+      
+      // Parse markdown
+      const htmlContent = window.marked.parse 
+        ? window.marked.parse(String(text), markedOptions)
+        : window.marked(String(text), markedOptions);
+      
+      // Process links
+      return processMarkdownLinks(htmlContent);
+    } catch (e) {
+      console.warn('Failed to parse markdown, using fallback:', e);
+      return formatResponseFallback(text);
+    }
+  } else {
+    return formatResponseFallback(text);
+  }
+}
+
+function formatResponseFallback(text) {
+  let html = String(text);
+  
+  // Basic markdown support without marked library
+  // Code blocks
+  html = html.replace(/```(\w+)?\n([\s\S]*?)```/g, '<pre class="code-block"><code>$2</code></pre>');
+  
+  // Inline code
+  html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+  
+  // Bold
+  html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  
+  // Italic
+  html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+  
+  // Headers
+  html = html.replace(/^### (.*$)/gim, '<h3>$1</h3>');
+  html = html.replace(/^## (.*$)/gim, '<h2>$1</h2>');
+  html = html.replace(/^# (.*$)/gim, '<h1>$1</h1>');
+  
+  // Lists
+  html = html.replace(/^- (.*$)/gim, '<li>$1</li>');
+  html = html.replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>');
+  
+  // Ordered lists
+  html = html.replace(/^\d+\. (.*$)/gim, '<li>$1</li>');
+  
+  // Links
+  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>');
+  
+  // Line breaks
+  html = html.replace(/\n/g, '<br>');
+  
+  return html;
+}
+
+/* Create node from chat suggestion in IA Tutor */
+async function createNodeFromSuggestion(nodeSuggestion, currentNodeLabel, mapJson, chatMessagesElement) {
+  if (!state.currentMap) {
+    alert('❌ Nenhum mapa carregado. Não foi possível criar o nó.');
+    return;
+  }
+
+  // Mostrar mensagem de progresso
+  const progressMsg = document.createElement('div');
+  progressMsg.className = 'chat-message bot-message loading';
+  progressMsg.textContent = '🔄 Criando nó no mapa...';
+  chatMessagesElement.appendChild(progressMsg);
+  chatMessagesElement.scrollTop = chatMessagesElement.scrollHeight;
+
+  try {
+    console.log('➕ Criando nó a partir da sugestão do IA Tutor:', nodeSuggestion);
+    
+    // Criar prompt para adicionar nó filho ao nó atual
+    const addNodePrompt = `Você deve adicionar UM NOVO NÓ FILHO ao mapa mental existente como subnó de: "${currentNodeLabel}".
+
+MAPA ATUAL:
+${JSON.stringify(state.currentMap, null, 2)}
+
+NÓ PAI: ${currentNodeLabel}
+NOVO NÓ: ${nodeSuggestion}
+
+INSTRUÇÕES:
+1. Analise o mapa atual
+2. Encontre o nó "${currentNodeLabel}" no mapa
+3. Adicione UM nó filho chamado "${nodeSuggestion}" conectado a "${currentNodeLabel}"
+4. Mantenha toda a estrutura existente
+5. O novo nó deve ser relevante ao contexto do nó pai
+6. Retorne o mapa COMPLETO (original + novo nó) em formato JSON válido
+
+Responda APENAS com o JSON do mapa completo, sem explicações.`;
+
+    guardProvider();
+    const response = await window.AI.chatPlain({
+      provider: state.provider,
+      apiKey: state.apiKey,
+      model: state.model,
+      message: addNodePrompt,
+      temperature: 0.3
+    });
+
+    // Tentar extrair JSON da resposta
+    const jsonMatch = response.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      const newMap = JSON.parse(jsonMatch[0]);
+      
+      // ✅ VALIDAÇÃO: Verificar se o mapa tem estrutura válida
+      if (!newMap || !newMap.nodes || !Array.isArray(newMap.nodes) || !newMap.nodes[0]) {
+        throw new Error('O mapa retornado não tem estrutura válida (nodes[0] indefinido). Resposta da IA: ' + response.substring(0, 200));
+      }
+      
+      // ✅ VERIFICAR SE É UM MAPA NOVO OU APENAS UPDATE
+      // Se a IA retornou só o nó novo, precisamos integrá-lo ao mapa existente
+      if (!newMap.title && newMap.nodes[0].label === nodeSuggestion) {
+        console.log('⚠️ IA retornou apenas o nó novo, integrando ao mapa existente...');
+        const existingMap = JSON.parse(JSON.stringify(state.currentMap));
+        
+        // Encontrar o nó pai no mapa existente e adicionar o filho
+        function addChildToNode(node, targetLabel, newChild) {
+          if (!node || !node.children) return false;
+          
+          if (node.label === targetLabel) {
+            node.children = node.children || [];
+            node.children.push({
+              id: crypto.randomUUID(),
+              label: newChild.label,
+              children: newChild.children || []
+            });
+            return true;
+          }
+          
+          for (const child of node.children) {
+            if (addChildToNode(child, targetLabel, newChild)) {
+              return true;
+            }
+          }
+          
+          return false;
+        }
+        
+        const added = addChildToNode(existingMap.nodes[0], currentNodeLabel, newMap.nodes[0]);
+        if (added) {
+          state.currentMap = existingMap;
+          await renderAndAttach(existingMap, true);
+        } else {
+          throw new Error('Não foi possível adicionar o nó ao mapa existente');
+        }
+      } else {
+        // Mapa completo retornado pela IA
+        state.currentMap = newMap;
+        await renderAndAttach(newMap, true); // Preservar viewport
+      }
+      
+      // Remover mensagem de progresso
+      progressMsg.remove();
+      
+      // Mostrar mensagem de sucesso no chat
+      const successMsg = document.createElement('div');
+      successMsg.className = 'chat-message bot-message';
+      successMsg.innerHTML = `✅ Nó <strong>${nodeSuggestion}</strong> adicionado ao mapa como filho de <strong>${currentNodeLabel}</strong>!`;
+      chatMessagesElement.appendChild(successMsg);
+      
+      // Scroll to show success message
+      requestAnimationFrame(() => {
+        chatMessagesElement.scrollTop = chatMessagesElement.scrollHeight;
+      });
+      
+      console.log('✅ Nó criado com sucesso via IA Tutor');
+    } else {
+      throw new Error('Resposta da IA não contém JSON válido');
+    }
+
+  } catch (error) {
+    console.error('Erro ao criar nó a partir da sugestão:', error);
+    
+    // Remover mensagem de progresso
+    if (progressMsg.parentNode) {
+      progressMsg.remove();
+    }
+    
+    // Mostrar mensagem de erro no chat
+    const errorMsg = document.createElement('div');
+    errorMsg.className = 'chat-message bot-message error';
+    errorMsg.textContent = `❌ Erro ao criar nó: ${error.message}`;
+    chatMessagesElement.appendChild(errorMsg);
+    
+    alert(`❌ Erro ao criar nó: ${error.message}`);
+    }
+}
+
 /* New helpers to convert current map structure to JSON / XML / Mermaid */
 function mapToStructuredJSON(mapJson) {
   // Ensure we export title, nodes and flattened connections (source->target)
@@ -5182,23 +5870,23 @@ function showCollapsedListPopup(cyNode, collapsedKids) {
     `;
   } else {
     // ✅ VERSÃO DESKTOP: Drag habilitado, posicionamento livre
-    popup.style.cssText = `
-      position: fixed !important;
-      background: white !important;
-      border: 1px solid #ddd !important;
-      border-radius: 8px !important;
-      padding: 0 !important;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.15) !important;
-      z-index: 99999 !important;
-      min-width: 320px !important;
-      max-width: min(90vw, 450px) !important;
-      overflow: visible !important;
-      cursor: move !important;
-      user-select: none !important;
-      resize: both !important;
-      min-height: 200px !important;
-      max-height: none !important;
-    `;
+  popup.style.cssText = `
+    position: fixed !important;
+    background: white !important;
+    border: 1px solid #ddd !important;
+    border-radius: 8px !important;
+    padding: 0 !important;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.15) !important;
+    z-index: 99999 !important;
+    min-width: 320px !important;
+    max-width: min(90vw, 450px) !important;
+    overflow: visible !important;
+    cursor: move !important;
+    user-select: none !important;
+    resize: both !important;
+    min-height: 200px !important;
+    max-height: none !important;
+  `;
   }
   
   // Criar seção de nós colapsados se existirem
@@ -5374,7 +6062,7 @@ function showCollapsedListPopup(cyNode, collapsedKids) {
   // ✅ POSICIONAMENTO: No mobile já está centralizado via inline styles
   // No desktop, posicionar próximo ao nó
   if (!isMobile) {
-    const bb = cyNode.renderedBoundingBox();
+  const bb = cyNode.renderedBoundingBox();
     const popupWidth = 420;
     const popupHeight = 300;
     
@@ -5439,33 +6127,33 @@ function showCollapsedListPopup(cyNode, collapsedKids) {
   // No mobile, o popup é fixo e não deve ser arrastado
   if (!isMobile) {
     // Event listeners para arrastar (DESKTOP)
-    header.addEventListener('mousedown', (e) => {
-      if (e.target === closeBtn) return; // Não arrastar se clicou no X
-      isDragging = true;
-      const rect = popup.getBoundingClientRect();
-      dragOffset.x = e.clientX - rect.left;
-      dragOffset.y = e.clientY - rect.top;
-      header.style.cursor = 'grabbing';
-      e.preventDefault();
-    });
+  header.addEventListener('mousedown', (e) => {
+    if (e.target === closeBtn) return; // Não arrastar se clicou no X
+    isDragging = true;
+    const rect = popup.getBoundingClientRect();
+    dragOffset.x = e.clientX - rect.left;
+    dragOffset.y = e.clientY - rect.top;
+    header.style.cursor = 'grabbing';
+    e.preventDefault();
+  });
+  
+  document.addEventListener('mousemove', (e) => {
+    if (!isDragging) return;
     
-    document.addEventListener('mousemove', (e) => {
-      if (!isDragging) return;
-      
-      const newX = Math.max(0, Math.min(window.innerWidth - popup.offsetWidth, e.clientX - dragOffset.x));
-      const newY = Math.max(0, Math.min(window.innerHeight - popup.offsetHeight, e.clientY - dragOffset.y));
-      
-      popup.style.left = newX + 'px';
-      popup.style.top = newY + 'px';
-      e.preventDefault();
-    });
+    const newX = Math.max(0, Math.min(window.innerWidth - popup.offsetWidth, e.clientX - dragOffset.x));
+    const newY = Math.max(0, Math.min(window.innerHeight - popup.offsetHeight, e.clientY - dragOffset.y));
     
-    document.addEventListener('mouseup', () => {
-      if (isDragging) {
-        isDragging = false;
-        header.style.cursor = 'move';
-      }
-    });
+    popup.style.left = newX + 'px';
+    popup.style.top = newY + 'px';
+    e.preventDefault();
+  });
+  
+  document.addEventListener('mouseup', () => {
+    if (isDragging) {
+      isDragging = false;
+      header.style.cursor = 'move';
+    }
+  });
   } else {
     // ✅ MOBILE: Não adicionar listeners de drag (popup fixo)
     console.log('📱 Popup MOBILE: Listeners de drag NÃO adicionados');
@@ -5840,14 +6528,14 @@ applyThemeBtn.addEventListener('click', () => {
   };
   state.theme = theme;
   applyTheme(theme);
-  window.Storage.GeraMapas.saveSettings({ provider: state.provider, apiKey: state.apiKey, model: state.model, theme: state.theme, layout: state.layout });
+  window.Storage.GeraMapas.saveSettings({ provider: state.provider, model: state.model, theme: state.theme, layout: state.layout });
 });
 
 resetThemeBtn.addEventListener('click', () => {
   const def = { '--bg':'#ffffff','--text':'#111111','--accent':'#000000','--muted':'#666666','--border':'#e6e6e6', fontSize:16, fontFamily: "Noto Sans, system-ui, sans-serif" };
   state.theme = def;
   applyTheme(def);
-  window.Storage.GeraMapas.saveSettings({ provider: state.provider, apiKey: state.apiKey, model: state.model, theme: state.theme, layout: state.layout });
+  window.Storage.GeraMapas.saveSettings({ provider: state.provider, model: state.model, theme: state.theme, layout: state.layout });
 });
 
 layoutTemplateSelect.addEventListener('change', (e) => {
@@ -5858,7 +6546,7 @@ layoutTemplateSelect.addEventListener('change', (e) => {
 if (readingModeSelect) {
   readingModeSelect.addEventListener('change', (e) => {
     state.readingMode = e.target.value;
-    window.Storage.GeraMapas.saveSettings({ provider: state.provider, apiKey: state.apiKey, model: state.model, theme: state.theme, layout: state.layout, readingMode: state.readingMode });
+    window.Storage.GeraMapas.saveSettings({ provider: state.provider, model: state.model, theme: state.theme, layout: state.layout, readingMode: state.readingMode });
   });
 }
 
@@ -5869,7 +6557,7 @@ fontSizeSelect.addEventListener('input', (e) => {
   // persist selection in state.theme but do not overwrite other theme keys
   state.theme = state.theme || {};
   state.theme.fontSize = size;
-  window.Storage.GeraMapas.saveSettings({ provider: state.provider, apiKey: state.apiKey, model: state.model, theme: state.theme, layout: state.layout });
+  window.Storage.GeraMapas.saveSettings({ provider: state.provider, model: state.model, theme: state.theme, layout: state.layout });
 });
 
 fontFamilySelect.addEventListener('change', (e) => {
@@ -5877,7 +6565,7 @@ fontFamilySelect.addEventListener('change', (e) => {
   document.documentElement.style.setProperty('--font-family-main', fam);
   state.theme = state.theme || {};
   state.theme.fontFamily = fam;
-  window.Storage.GeraMapas.saveSettings({ provider: state.provider, apiKey: state.apiKey, model: state.model, theme: state.theme, layout: state.layout });
+  window.Storage.GeraMapas.saveSettings({ provider: state.provider, model: state.model, theme: state.theme, layout: state.layout });
 });
 
 /* Export functionality - Removido duplicata, já definido acima */

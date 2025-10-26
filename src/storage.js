@@ -8,11 +8,124 @@ const KEY_SUMMARIES = 'mm.summaries.v1';
 window.Storage.GeraMapas = {
   saveSettings({ provider, apiKey, model, theme, layout }) {
     // theme: { --bg, --text, --accent, --muted, --border, fontSize, fontFamily }
-    localStorage.setItem(KEY_SETTINGS, JSON.stringify({ provider, apiKey, model, theme, layout }));
+    const settings = JSON.parse(localStorage.getItem(KEY_SETTINGS) || '{}');
+    
+    // ❌ NÃO salvar apiKey aqui - isso deve ser feito apenas via saveApiKey()
+    // Se apiKey for passado, ignorar (para evitar sobrescrever chaves existentes)
+    
+    if (provider !== undefined) settings.provider = provider;
+    if (model !== undefined) settings.model = model;
+    if (theme !== undefined) settings.theme = theme;
+    if (layout !== undefined) settings.layout = layout;
+    
+    localStorage.setItem(KEY_SETTINGS, JSON.stringify(settings));
   },
   loadSettings() {
     const raw = localStorage.getItem(KEY_SETTINGS);
-    return raw ? JSON.parse(raw) : null;
+    const parsed = raw ? JSON.parse(raw) : null;
+    
+    if (!parsed) return null;
+    
+    // ✅ MIGRAÇÃO: Converter sistema antigo (apiKey) para novo (apiKeys)
+    if (parsed.apiKey && !parsed.apiKeys) {
+      console.log('🔄 Migrando API key antigo para novo sistema...');
+      parsed.apiKeys = {};
+      if (parsed.provider) {
+        parsed.apiKeys[parsed.provider] = parsed.apiKey;
+        console.log(`✅ API key migrada para provedor "${parsed.provider}"`);
+      }
+      // Remover apiKey antigo após migração
+      delete parsed.apiKey;
+      localStorage.setItem(KEY_SETTINGS, JSON.stringify(parsed));
+      console.log('✅ Migração concluída');
+    }
+    
+    // Retornar compatibilidade com código antigo
+    if (parsed.apiKeys && parsed.provider) {
+      parsed.apiKey = parsed.apiKeys[parsed.provider] || '';
+    }
+    
+    // Debug: log para detectar problemas
+    if (parsed.apiKeys) {
+      console.log('🔍 API Keys carregadas:', Object.keys(parsed.apiKeys));
+    }
+    
+    return parsed;
+  },
+  getApiKey(provider) {
+    const settings = this.loadSettings();
+    
+    console.log(`🔍 getApiKey chamado para provedor: "${provider}"`);
+    console.log(`🔍 Settings:`, JSON.stringify(settings, null, 2));
+    
+    if (settings && settings.apiKeys && settings.apiKeys[provider]) {
+      console.log(`✅ API Key encontrada para "${provider}"`);
+      return settings.apiKeys[provider];
+    }
+    
+    // Compatibilidade com código antigo
+    if (settings && !settings.apiKeys && settings.apiKey) {
+      console.log(`⚠️ Usando API key antiga (compatibilidade)`);
+      return settings.apiKey;
+    }
+    
+    console.log(`⚠️ Nenhuma API key encontrada para "${provider}"`);
+    return '';
+  },
+  saveApiKey(provider, apiKey) {
+    const settings = JSON.parse(localStorage.getItem(KEY_SETTINGS) || '{}');
+    if (!settings.apiKeys) settings.apiKeys = {};
+    settings.apiKeys[provider] = apiKey;
+    localStorage.setItem(KEY_SETTINGS, JSON.stringify(settings));
+    console.log(`✅ API Key salva para provedor "${provider}"`);
+    console.log(`🔍 Estado atual das API keys:`, settings.apiKeys);
+  },
+  deleteApiKey(provider) {
+    const settings = JSON.parse(localStorage.getItem(KEY_SETTINGS) || '{}');
+    
+    console.log(`🗑️ Excluindo API key do provedor: ${provider}`);
+    console.log(`🔍 Estado ANTES da exclusão:`, JSON.stringify(settings, null, 2));
+    
+    let deleted = false;
+    
+    // ✅ NOVO: Sistema com apiKeys (por provedor)
+    if (settings.apiKeys) {
+      const hadKey = settings.apiKeys[provider];
+      delete settings.apiKeys[provider];
+      deleted = true;
+      
+      console.log(`🔍 Chave existia em apiKeys?: ${hadKey ? 'SIM' : 'NÃO'}`);
+      
+      // Se não tem mais nenhuma API key, remover o objeto apiKeys
+      if (Object.keys(settings.apiKeys).length === 0) {
+        console.log(`🗑️ Removendo objeto apiKeys (está vazio)`);
+        delete settings.apiKeys;
+      }
+    }
+    
+    // ✅ NOVO: Sistema antigo (compatibilidade) - sempre deletar apiKey global
+    if (settings.apiKey) {
+      console.log(`🗑️ Deletando apiKey antigo (sistema legado)`);
+      delete settings.apiKey;
+      deleted = true;
+    }
+    
+    if (deleted) {
+      localStorage.setItem(KEY_SETTINGS, JSON.stringify(settings));
+      console.log(`✅ API Key(s) excluída(s) do provedor "${provider}"`);
+    } else {
+      console.warn(`⚠️ Nenhuma API key encontrada para o provedor "${provider}"`);
+    }
+    
+    // Verificar se realmente foi excluída
+    const verify = JSON.parse(localStorage.getItem(KEY_SETTINGS) || '{}');
+    console.log(`🔍 Estado após salvar:`, JSON.stringify(verify, null, 2));
+    
+    if ((verify.apiKeys && verify.apiKeys[provider]) || verify.apiKey) {
+      console.error(`❌ ERRO: A chave ainda existe após exclusão!`);
+    } else {
+      console.log(`✅ Confirmação: API Key completamente removida`);
+    }
   },
   saveMap({ title, data }) {
     const id = crypto.randomUUID();

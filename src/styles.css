@@ -1871,7 +1871,7 @@
       pointer-events: none;
     }
     
-      .header-nav {
+    .header-nav {
         overflow-x: auto !important; /* ✅ MOBILE: Scroll horizontal deslizante */
         overflow-y: hidden !important;
         padding-bottom: 6px;
@@ -1932,12 +1932,12 @@
       max-width: 40px;
     }
     
-      .app-header.has-map .header-nav {
-        gap: 4px;
+    .app-header.has-map .header-nav {
+      gap: 4px;
         overflow-x: auto !important; /* ✅ MOBILE: Permitir scroll horizontal */
         overflow-y: hidden !important;
-        flex: 1;
-        min-width: 0;
+      flex: 1;
+      min-width: 0;
         max-height: 70px; /* ✅ AUMENTAR: Altura maior */
         padding-bottom: 6px; /* ✅ AUMENTAR: Padding para scrollbar */
         /* ✅ Scroll deslizante e suave */
@@ -1947,7 +1947,7 @@
         overscroll-behavior-y: contain;
         scroll-padding: 8px;
         flex-wrap: nowrap; /* Não quebrar linha, permitir scroll */
-      }
+    }
     
     .app-header.has-map .nav-btn {
       min-width: 50px;
@@ -2413,7 +2413,7 @@
     color: var(--muted);
     font-style: italic;
   }
-
+  
   /* Floating contextual chat */
   .floating-chat {
     position: fixed;
@@ -2946,6 +2946,31 @@
       padding: 8px 8px 20px 8px; /* padding-bottom aumentado para melhor scroll */
     }
     
+    /* ✅ MOBILE: Garantir scroll completo dos textos nas tabs */
+    .node-slider-body .node-tabs-body { 
+      max-height: calc(100vh - 180px) !important; /* ✅ Mais espaço no mobile */
+      overflow-y: auto !important; 
+      overflow-x: hidden; 
+      padding-right: 6px; 
+    }
+    
+    .node-tabs-body .tab-content {
+      min-height: fit-content !important;
+      padding-bottom: 32px !important; /* ✅ ✅ AUMENTADO: De 20px para 32px - mais espaço no mobile */
+    }
+    
+    .tab-content-body {
+      padding-bottom: 36px !important; /* ✅ ✅ AUMENTADO: De 24px para 36px - mais espaço no mobile */
+      min-height: fit-content !important;
+    }
+    
+    /* ✅ MOBILE: Garantir que exercícios não criem scroll duplo */
+    .ex-output {
+      overflow: visible !important;
+      max-height: none !important;
+      padding-bottom: 24px !important; /* ✅ Espaço extra no mobile */
+    }
+    
     .node-slider-content {
       font-size: 10px;
     }
@@ -2993,6 +3018,31 @@
     
     .node-slider-body {
       padding: 6px 6px 16px 6px; /* padding-bottom aumentado para melhor scroll */
+    }
+    
+    /* ✅ MOBILE PEQUENO: Garantir scroll completo dos textos nas tabs */
+    .node-slider-body .node-tabs-body { 
+      max-height: calc(100vh - 200px) !important; /* ✅ Ainda mais espaço em telas pequenas */
+      overflow-y: auto !important; 
+      overflow-x: hidden; 
+      padding-right: 4px; 
+    }
+    
+    .node-tabs-body .tab-content {
+      min-height: fit-content !important;
+      padding-bottom: 28px !important; /* ✅ ✅ AUMENTADO: De 16px para 28px - mais espaço em telas pequenas */
+    }
+    
+    .tab-content-body {
+      padding-bottom: 32px !important; /* ✅ ✅ AUMENTADO: De 20px para 32px - mais espaço em telas pequenas */
+      min-height: fit-content !important;
+    }
+    
+    /* ✅ MOBILE PEQUENO: Garantir que exercícios não criem scroll duplo */
+    .ex-output {
+      overflow: visible !important;
+      max-height: none !important;
+      padding-bottom: 20px !important; /* ✅ Espaço extra em telas pequenas */
     }
     
     .node-slider-content {
@@ -4499,9 +4549,40 @@
   .tab-content.active { display:block; }
   .generate-quiz { margin-top:8px; }
   .quiz-area { border-top:1px dashed var(--border); padding-top:12px; }
+  
+  /* ✅ ÁREA DE EXERCÍCIOS: Evitar scroll duplo */
+  .ex-output {
+    overflow: visible !important; /* ✅ Não criar barra própria */
+    max-height: none !important; /* ✅ Sem limite próprio */
+    padding-bottom: 32px !important; /* ✅ Espaço extra no final */
+  }
+  
   /* ensure node-slider content scrolls well */
-  .node-slider-body { padding: 0 16px 16px; overflow: hidden; display: flex; flex-direction: column; }
-  .node-slider-body .node-tabs-body { max-height: calc(100vh - 120px); overflow-y: auto; overflow-x: hidden; padding-right:8px; height: 100%; }
+  .node-slider-body { 
+    padding: 0 16px 16px; 
+    overflow: hidden; 
+    display: flex; 
+    flex-direction: column; 
+  }
+  
+  .node-slider-body .node-tabs-body { 
+    max-height: calc(100vh - 120px); 
+    overflow-y: auto !important; /* ✅ SCROLL SEMPRE ATIVO */
+    overflow-x: hidden; 
+    padding-right: 8px; 
+    /* ✅ REMOVIDO: height: 100% que estava causando corte de texto */
+  }
+  
+  /* ✅ CORREÇÃO: Permitir scroll completo do conteúdo das tabs */
+  .node-tabs-body .tab-content {
+    min-height: fit-content !important; /* ✅ Evita corte de conteúdo */
+    padding-bottom: 40px !important; /* ✅ ✅ AUMENTADO: De 24px para 40px - mais espaço para leitura */
+  }
+  
+  .tab-content-body {
+    padding-bottom: 48px !important; /* ✅ ✅ AUMENTADO: De 32px para 48px - ainda mais espaço */
+    min-height: fit-content !important; /* ✅ Ajusta altura ao conteúdo */
+  }
   
   /* Styles for Roteiro Curto Selector */
   .script-model-selector h3 {
@@ -4892,7 +4973,7 @@
     gap: 4px; /* Gap menor em telas médias */
     padding-bottom: 4px;
   }
-
+  
   .node-tabs-header .tab {
     padding: 4px 8px; /* Padding menor */
     font-size: 11px; /* Fonte menor */
@@ -4940,7 +5021,7 @@
     gap: 3px; /* Gap ainda menor */
     padding-bottom: 3px;
   }
-
+  
   .node-tabs-header .tab {
     padding: 3px 6px; /* Padding mínimo */
     font-size: 10px; /* Fonte bem pequena */

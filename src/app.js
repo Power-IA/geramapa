@@ -3184,11 +3184,26 @@ async function generateTabContentForNode(target, node, mapJson, tabName, layoutM
     // Save content to localStorage
     saveTabContentToStorage(nodeLabel, tabName, markdown);
 
-    // Render markdown
+    // ✅ Render markdown with FULL support (emojis, lists, breaks)
     let rendered = '';
     try {
       if (window.marked) {
-        const htmlContent = window.marked.parse ? window.marked.parse(markdown) : window.marked(markdown);
+        const markedOptions = {
+          mangle: false,
+          headerIds: false,
+          headerPrefix: '',
+          breaks: true, // ✅ Enable line breaks
+          gfm: true // ✅ GitHub Flavored Markdown (for emoji support)
+        };
+        
+        if (window.marked.setOptions) {
+          window.marked.setOptions(markedOptions);
+        }
+        
+        const htmlContent = window.marked.parse 
+          ? window.marked.parse(markdown, markedOptions) 
+          : window.marked(markdown, markedOptions);
+        
         rendered = processMarkdownLinks(htmlContent);
       } else {
         rendered = `<pre style="white-space:pre-wrap;word-wrap:break-word;">${markdown.replace(/</g,'&lt;')}</pre>`;
@@ -3484,11 +3499,13 @@ async function showTooltipForNode(node, anchorEl, mapJson) {
         const renderMd = async (md) => {
           try {
             if (window.marked) {
-              // ✅ CORREÇÃO: Configurar marked para evitar avisos de deprecação
+              // ✅ CORREÇÃO: Configurar marked com suporte FULL (emojis, lists, breaks)
               const markedOptions = {
                 mangle: false,
                 headerIds: false,
-                headerPrefix: ''
+                headerPrefix: '',
+                breaks: true, // ✅ Enable line breaks
+                gfm: true // ✅ GitHub Flavored Markdown (for emoji support)
               };
               
               // Configurar marked com opções

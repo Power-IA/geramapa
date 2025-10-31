@@ -62,7 +62,8 @@ window.MapEngine.initCy = function(container) {
         style: {
           'background-image': 'data(img)',
           'background-fit': 'cover',
-          'background-position': 'center center',
+          'background-position-x': '50%', // ✅ Cytoscape requer propriedades separadas (x e y)
+          'background-position-y': '50%', // ✅ Para centralizar a imagem de fundo
           'background-repeat': 'no-repeat',
           'background-opacity': 0.8,
           'border-width': 2,
@@ -136,7 +137,7 @@ function enableCenteredZoom(cy) {
       e.preventDefault();
       
       // ✅ CORREÇÃO: Usar performZoom em vez de zoom direto
-      const factor = e.deltaY < 0 ? 1.1 : 0.9;
+      const factor = e.deltaY < 0 ? 1.05 : 0.95; /* ✅ Reduzido: zoom mais suave no wheel */
       applyUnifiedZoom(factor);
     }, { passive: false });
     
@@ -546,4 +547,208 @@ function buildNodeInfoIcons(mapJson) {
       if (nodeEl) positionOverlay(nodeEl, n.renderedPosition());
     });
   }));
+}
+
+
+
+window.MapEngine.mergeMaps = function(a, b) {
+
+  const rootA = a.nodes[0];
+
+  const rootB = b.nodes[0];
+
+  const merged = JSON.parse(JSON.stringify(a));
+
+  merged.title = `${a.title} + ${b.title}`;
+
+  const attach = { id: `ref-${rootB.id || 'root'}`, label: rootB.label || b.title || 'Mapa', children: rootB.children || [] };
+
+  merged.nodes[0].children = (merged.nodes[0].children || []).concat(attach);
+
+  return merged;
+
+};
+
+
+
+// Função para parar auto-organização quando necessário
+
+window.MapEngine.stopAutoOrganization = function() {
+
+  window.LayoutAlgorithm.stopAutoOrganization();
+
+  console.log('🛑 Auto-organização parada');
+
+};
+
+
+
+function treeToElements(root) {
+
+  const elements = [];
+
+  function walk(node, parentId = null, depth = 0, branch = null) {
+
+    if (node.isCollapsed) return; // skip collapsed subtree entirely
+
+    const id = node.id || crypto.randomUUID();
+
+    const data = { id, label: node.label || '', depth };
+
+    if (node.img) data.img = node.img; // include image dataURL for cytoscape background
+
+    if (branch !== null) data.branch = String(branch);
+
+    elements.push({ data });
+
+    if (parentId) {
+
+      const edgeData = { id: `${parentId}->${id}`, source: parentId, target: id };
+
+      if (branch !== null) edgeData.branch = String(branch);
+
+      elements.push({ data: edgeData });
+
+    }
+
+    const kids = node.children || [];
+
+    kids.forEach((child, idx) => {
+
+      const childBranch = depth === 0 ? idx : branch;
+
+      walk(child, id, depth + 1, childBranch);
+
+    });
+
+  }
+
+  walk(root, null, 0, null);
+
+  return elements;
+
+}
+
+
+
+function positionOverlay(el, pos) {
+
+  // place the info icon outside node bounds with at least 8px margin
+
+  try {
+
+    // if node provided, compute bounding box to avoid overlap
+
+    if (pos && pos.x !== undefined && pos.y !== undefined && el && el.dataset && el.dataset.nodeId) {
+
+      // try to use the node's rendered bounding box if available (passed as pos may be center)
+
+      const nid = el.dataset.nodeId;
+
+      const node = state.cy.getElementById(nid);
+
+      if (node && node.length) {
+
+        const bb = node.renderedBoundingBox();
+
+        const left = bb.x2 + 12; // place further right to avoid edge overlap
+
+        const top = Math.max(8, bb.y1 - 4); // position slightly above node to avoid edge paths
+
+        el.style.left = left + 'px';
+
+        el.style.top = top + 'px';
+
+        return;
+
+      }
+
+    }
+
+  } catch (e) { /* fallback to simple offset */ }
+
+  // fallback: offset top-right of node with safe margins
+
+  el.style.left = (pos.x + 28) + 'px';
+
+  el.style.top = (pos.y - 12) + 'px';
+
+}
+
+
+
+/* after state and DOM references are defined, add containers for overlays */
+
+// overlaysRoot is now created in app.js with extension safety
+
+
+
+function buildNodeInfoIcons(mapJson) {
+
+  console.log('🔍 buildNodeInfoIcons called, overlaysRoot:', overlaysRoot);
+
+  if (!overlaysRoot) {
+
+    console.warn('❌ overlaysRoot not available, skipping node info icons');
+
+    return;
+
+  }
+
+  console.log('✅ Building node info icons...');
+
+  clearOverlays();
+
+  const nodes = state.cy.nodes();
+
+  console.log('📊 Found', nodes.length, 'nodes');
+
+  nodes.forEach((n, idx) => {
+
+    const id = n.id();
+
+    const pos = n.renderedPosition();
+
+    const el = document.createElement('div');
+
+    el.className = 'node-info';
+
+    el.textContent = 'i';
+
+    el.style.pointerEvents = 'auto';
+
+    // store node id for precise overlay placement
+
+    el.dataset.nodeId = id;
+
+    overlaysRoot.appendChild(el);
+
+    positionOverlay(el, pos);
+
+    el.addEventListener('click', async (e) => {
+
+      e.stopPropagation();
+
+      showTooltipForNode(n, el, mapJson);
+
+    });
+
+  });
+
+  console.log('✅ Node info icons created successfully');
+
+  // update positions on viewport changes
+
+  ['pan', 'zoom', 'resize', 'position'].forEach(evt => state.cy.on(evt, () => {
+
+    state.cy.nodes().forEach(n => {
+
+      const nodeEl = overlaysRoot.querySelector(`.node-info[data-node-id="${n.id()}"]`);
+
+      if (nodeEl) positionOverlay(nodeEl, n.renderedPosition());
+
+    });
+
+  }));
+
 }

@@ -95,6 +95,7 @@ const state = {
   provider: 'groq',
   apiKey: '',
   model: '',
+  language: 'pt', // Idioma padrão: Português
   currentMap: null,
   cy: null,
   chat: [],
@@ -104,6 +105,22 @@ const state = {
 // Expose state globally for debugging and testing with extension safety
 if (typeof window !== 'undefined' && !window.state) {
   window.state = state;
+}
+
+// Função helper para obter instrução de idioma
+function getLanguageInstruction(languageCode = 'pt') {
+  const languageMap = {
+    'pt': 'Português',
+    'en': 'English',
+    'es': 'Español',
+    'fr': 'Français',
+    'de': 'Deutsch',
+    'it': 'Italiano',
+    'zh': '中文'
+  };
+  
+  const languageName = languageMap[languageCode] || languageMap['pt'];
+  return `IMPORTANTE: Você DEVE produzir TODO o conteúdo EXCLUSIVAMENTE em ${languageName}. Todos os textos, títulos, descrições, explicações e respostas devem estar em ${languageName}. Não use nenhum outro idioma.`;
 }
 
 // Safe DOM manipulation function with extension compatibility
@@ -172,6 +189,9 @@ const apiStatus = document.getElementById('apiStatus');
 const modelSelect = document.getElementById('modelSelect');
 const refreshModelsBtn = document.getElementById('refreshModelsBtn');
 const modelsStatus = document.getElementById('modelsStatus');
+const languageSelect = document.getElementById('languageSelect');
+const saveLanguageBtn = document.getElementById('saveLanguageBtn');
+const languageStatus = document.getElementById('languageStatus');
 const chatLog = document.getElementById('chatLog');
 const userInput = document.getElementById('userInput');
 const sendBtn = document.getElementById('sendBtn');
@@ -234,12 +254,43 @@ const closeModelSelector = modelSelector.querySelector('.model-selector-close');
 
 
 /* Init - aguarda carregamento das dependências */
+let initAppAttempts = 0;
+const MAX_INIT_APP_ATTEMPTS = 100; // ✅ Máximo 10 segundos (100 * 100ms)
+
 function initApp() {
+  // ✅ CRÍTICO: Prevenir loop infinito
+  initAppAttempts++;
+  
+  if (initAppAttempts > MAX_INIT_APP_ATTEMPTS) {
+    console.error('❌ ERRO CRÍTICO: Dependências não carregadas após', MAX_INIT_APP_ATTEMPTS, 'tentativas. Abortando inicialização.');
+    console.error('Dependências faltando:', {
+      cytoscape: !!window.cytoscape,
+      AI: !!window.AI,
+      MapEngine: !!window.MapEngine,
+      Storage: !!window.Storage,
+      LayoutAlgorithm: !!window.LayoutAlgorithm
+    });
+    // ✅ Não continuar o loop - abortar inicialização
+    return;
+  }
+  
   if (!window.cytoscape || !window.AI || !window.MapEngine || !window.Storage || !window.LayoutAlgorithm) {
-    console.error('Dependências não carregadas completamente');
+    if (initAppAttempts % 10 === 0) { // ✅ Log a cada 10 tentativas para não poluir console
+      console.warn(`⚠️ Dependências não carregadas ainda (tentativa ${initAppAttempts}/${MAX_INIT_APP_ATTEMPTS})`);
+      console.warn('Faltando:', {
+        cytoscape: !window.cytoscape ? '❌' : '✅',
+        AI: !window.AI ? '❌' : '✅',
+        MapEngine: !window.MapEngine ? '❌' : '✅',
+        Storage: !window.Storage ? '❌' : '✅',
+        LayoutAlgorithm: !window.LayoutAlgorithm ? '❌' : '✅'
+      });
+    }
     setTimeout(initApp, 100);
     return;
   }
+  
+  // ✅ Resetar contador ao sucesso
+  initAppAttempts = 0;
   
   state.cy = window.MapEngine.initCy(mapContainer);
   
@@ -295,8 +346,10 @@ if (persisted) {
   state.apiKey = persisted.apiKey || '';
   }
   state.model = persisted.model || '';
+  state.language = persisted.language || state.language;
   providerSelect.value = state.provider;
   apiKeyInput.value = state.apiKey ? '••••••••' : '';
+  if (languageSelect) languageSelect.value = state.language;
 }
 // Apenas atualizar UI de modelos, não carregar ainda
 modelSelect.innerHTML = '<option value="">Selecione um modelo</option>';
@@ -795,6 +848,30 @@ saveApiBtn.addEventListener('click', async () => {
   await updateModelsUI();
 });
 
+// Event listener para salvar idioma
+if (saveLanguageBtn && languageSelect) {
+  saveLanguageBtn.addEventListener('click', () => {
+    const selectedLanguage = languageSelect.value;
+    if (!selectedLanguage) {
+      if (languageStatus) {
+        languageStatus.textContent = '⚠️ Selecione um idioma';
+        languageStatus.style.color = 'var(--accent)';
+      }
+      return;
+    }
+    
+    state.language = selectedLanguage;
+    window.Storage.GeraMapas.saveSettings({ language: selectedLanguage });
+    
+    if (languageStatus) {
+      languageStatus.textContent = '✅ Idioma salvo com sucesso!';
+      languageStatus.style.color = 'var(--success)';
+    }
+    
+    console.log(`🌐 Idioma atualizado para: ${selectedLanguage}`);
+  });
+}
+
 // Botão para excluir API key
 if (document.getElementById('deleteApiBtn')) {
   document.getElementById('deleteApiBtn').addEventListener('click', () => {
@@ -1248,7 +1325,8 @@ Responda APENAS com o JSON do mapa completo, sem explicações.`;
       apiKey: state.apiKey,
       model: state.model,
       message: addNodePrompt,
-      temperature: 0.3
+      temperature: 0.3,
+      language: state.language
     });
 
     // Tentar extrair e validar JSON da resposta
@@ -1303,7 +1381,8 @@ Responda APENAS com o JSON do mapa completo, sem explicações.`;
       apiKey: state.apiKey,
       model: state.model,
       message: expandPrompt,
-      temperature: 0.3
+      temperature: 0.3,
+      language: state.language
     });
 
     // Tentar extrair e validar JSON da resposta
@@ -1319,20 +1398,19 @@ Responda APENAS com o JSON do mapa completo, sem explicações.`;
   }
 }
 
-// Função para processar links Markdown e adicionar segurança
+// ✅ BLOQUEIO DE LINKS: Remove todos os links clicáveis e converte em texto
 function processMarkdownLinks(htmlContent) {
   // Criar um elemento temporário para processar o HTML
   const tempDiv = document.createElement('div');
   tempDiv.innerHTML = htmlContent;
   
-  // Encontrar todos os links e adicionar target="_blank" e rel="noopener noreferrer"
+  // ✅ REMOVER TODOS OS LINKS: Converter links em texto simples
   const links = tempDiv.querySelectorAll('a');
   links.forEach(link => {
-    // Só adicionar se não tiver target já definido
-    if (!link.hasAttribute('target')) {
-      link.setAttribute('target', '_blank');
-      link.setAttribute('rel', 'noopener noreferrer');
-    }
+    // Criar um nó de texto com o conteúdo do link
+    const textNode = document.createTextNode(link.textContent || link.href);
+    // Substituir o link pelo texto
+    link.parentNode.replaceChild(textNode, link);
   });
   
   return tempDiv.innerHTML;
@@ -1396,7 +1474,8 @@ async function handleFloatingChatSend() {
         provider: state.provider,
         apiKey: state.apiKey,
         model: state.model,
-        message: message
+        message: message,
+        language: state.language
       });
       
       // Renderizar o novo mapa
@@ -1456,7 +1535,8 @@ Responda de forma concisa e prática sobre a estrutura, organização ou conteú
         apiKey: state.apiKey,
         model: state.model,
         message: contextualPrompt,
-        temperature: 0.2
+      temperature: 0.2,
+      language: state.language
       });
 
       // Remover mensagem de loading e adicionar resposta
@@ -1621,7 +1701,8 @@ Responda como um especialista que conhece cada detalhe deste mapa, usando Markdo
       apiKey: state.apiKey,
       model: state.model,
       message: specialistPrompt,
-      temperature: 0.1 // Baixa temperatura para respostas mais precisas
+      temperature: 0.1, // Baixa temperatura para respostas mais precisas
+      language: state.language
     });
 
     // Remover mensagem de loading e adicionar resposta
@@ -2296,7 +2377,11 @@ function loadSavedList() {
         <span style="display:flex;gap:6px">
           <button class="btn" data-action="load" data-id="${id}" aria-label="Abrir mapa">📂</button>
           <button class="btn" data-action="add" data-id="${id}" aria-label="Adicionar ao atual">➕</button>
-          <button class="btn ghost" data-action="delete" data-id="${id}" aria-label="Excluir mapa">🗑️</button>
+          <button class="btn ghost" data-action="delete" data-id="${id}" aria-label="Excluir mapa">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="width: 18px; height: 18px; fill: #666; vertical-align: middle;">
+              <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+            </svg>
+          </button>
         </span>
       `;
       savedMapsList.appendChild(li);
@@ -2984,7 +3069,8 @@ async function updateTooltipSummary(tooltip, node, mapJson, nodeLabel, mapTitle,
       apiKey: state.apiKey,
       model: state.model,
       message: prompt,
-      temperature: 0.2
+      temperature: 0.2,
+      language: state.language
     });
 
     // ✅ SALVAR NOVO RESUMO NO LOCALSTORAGE
@@ -3178,7 +3264,8 @@ async function generateTabContentForNode(target, node, mapJson, tabName, layoutM
       apiKey: state.apiKey,
       model: state.model,
       message: prompt,
-      temperature: 0.2
+      temperature: 0.2,
+      language: state.language
     });
 
     // Save content to localStorage
@@ -3494,7 +3581,7 @@ async function showTooltipForNode(node, anchorEl, mapJson) {
       try {
         guardProvider();
         // fetch base/normal content once (will reuse for "Normal" tab)
-        const baseMd = await window.AI.chatPlain({ provider: state.provider, apiKey: state.apiKey, model: state.model, message: fullPrompt, temperature: 0.2 });
+        const baseMd = await window.AI.chatPlain({ provider: state.provider, apiKey: state.apiKey, model: state.model, message: fullPrompt, temperature: 0.2, language: state.language });
         // render markdown helper
         const renderMd = async (md) => {
           try {
@@ -3761,7 +3848,7 @@ async function showTooltipForNode(node, anchorEl, mapJson) {
                   }
 
                   guardProvider();
-                  const exMd = await window.AI.chatPlain({ provider: state.provider, apiKey: state.apiKey, model: state.model, message: exPrompt, temperature: 0.2 });
+                  const exMd = await window.AI.chatPlain({ provider: state.provider, apiKey: state.apiKey, model: state.model, message: exPrompt, temperature: 0.2, language: state.language });
                   const html = await renderMd(exMd);
                   out.innerHTML = html;
                   
@@ -3864,7 +3951,7 @@ async function showTooltipForNode(node, anchorEl, mapJson) {
                   }
 
                   guardProvider();
-                  const exMd = await window.AI.chatPlain({ provider: state.provider, apiKey: state.apiKey, model: state.model, message: exPrompt, temperature: 0.2 });
+                  const exMd = await window.AI.chatPlain({ provider: state.provider, apiKey: state.apiKey, model: state.model, message: exPrompt, temperature: 0.2, language: state.language });
                   const html = await renderMd(exMd);
                   out.innerHTML = html;
                     // Ocultar respostas por padrão
@@ -4102,7 +4189,7 @@ async function showTooltipForNode(node, anchorEl, mapJson) {
           try {
             console.log('🤖 Enviando prompt para IA:', rolePrompt.substring(0, 100) + '...');
             guardProvider();
-            const resp = await window.AI.chatPlain({ provider: state.provider, apiKey: state.apiKey, model: state.model, message: rolePrompt, temperature: 0.2 });
+            const resp = await window.AI.chatPlain({ provider: state.provider, apiKey: state.apiKey, model: state.model, message: rolePrompt, temperature: 0.2, language: state.language });
             console.log('✅ Resposta da IA recebida:', resp.substring(0, 100) + '...');
             const html = await renderMd(resp);
             target.innerHTML = html + (tab === 'palestra' ? `<div style="margin-top:12px"><button class="btn primary generate-quiz">Gerar Quiz</button><div class="quiz-area" style="margin-top:12px"></div></div>` : '');
@@ -4122,7 +4209,7 @@ async function showTooltipForNode(node, anchorEl, mapJson) {
                 const quizPrompt = `Com base no roteiro de palestra sobre "${nodeLabel}" (use apenas o conteúdo do roteiro), gere um pequeno questionário com 4 perguntas: misture múltipla escolha (com 3-4 opções) e verdadeiro/falso, e após as perguntas forneça as respostas corretas numeradas com explicações curtas (1-2 frases cada). Formate a saída em MARKDOWN com seção "Quiz" e seção "Respostas".`;
                 try {
                   guardProvider();
-                  const quizMd = await window.AI.chatPlain({ provider: state.provider, apiKey: state.apiKey, model: state.model, message: quizPrompt, temperature: 0.2 });
+                  const quizMd = await window.AI.chatPlain({ provider: state.provider, apiKey: state.apiKey, model: state.model, message: quizPrompt, temperature: 0.2, language: state.language });
                   const qhtml = await renderMd(quizMd);
                   qarea.innerHTML = qhtml;
                 } catch (errQ) {
@@ -5119,7 +5206,8 @@ async function generateShortScript(key, targetElement, nodeLabel, mapTitle, rend
             apiKey: state.apiKey, 
             model: state.model, 
             message: scriptPrompt, 
-            temperature: 0.5
+            temperature: 0.5,
+            language: state.language
         });
 
         // The model output might already be a numbered list markdown. We render it.
@@ -5441,7 +5529,8 @@ RESPOSTA (em formato de mensagem):`;
     apiKey: state.apiKey,
     model: state.model,
     message: contextPrompt,
-    temperature: 0.2
+    temperature: 0.2,
+    language: state.language
   });
   
   // Parse response to detect suggestions
@@ -5605,8 +5694,8 @@ function formatResponseFallback(text) {
   // Ordered lists
   html = html.replace(/^\d+\. (.*$)/gim, '<li>$1</li>');
   
-  // Links
-  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>');
+  // ✅ BLOQUEIO DE LINKS: Remover links markdown e deixar apenas o texto
+  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$1'); // Remove link, mantém apenas o texto
   
   // Line breaks
   html = html.replace(/\n/g, '<br>');
@@ -6777,7 +6866,11 @@ function updateSummariesList() {
                 </div>
               </div>
               <div class="summary-actions">
-                <button class="btn ghost delete-summary" data-node="${summary.nodeLabel}" data-map="${summary.mapTitle}" title="Excluir resumo">🗑️</button>
+                <button class="btn ghost delete-summary" data-node="${summary.nodeLabel}" data-map="${summary.mapTitle}" title="Excluir resumo">
+                  <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="width: 18px; height: 18px; fill: #666; vertical-align: middle;">
+                    <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                  </svg>
+                </button>
               </div>
             </div>
           `;
@@ -7047,7 +7140,7 @@ function zoomToFit() {
 
 // Event listeners dos botões de zoom
 zoomInBtn.addEventListener('click', () => {
-    performZoom(1.1);
+    performZoom(1.05); /* ✅ Reduzido de 1.1 para 1.05 - zoom mais suave */
   
   // Feedback visual
   zoomInBtn.style.transform = 'scale(0.9)';
@@ -7057,7 +7150,7 @@ zoomInBtn.addEventListener('click', () => {
 });
 
 zoomOutBtn.addEventListener('click', () => {
-    performZoom(0.91);
+    performZoom(0.95); /* ✅ Reduzido de 0.91 para 0.95 - zoom mais suave */
   
   // Feedback visual
   zoomOutBtn.style.transform = 'scale(0.9)';
@@ -7093,11 +7186,11 @@ document.addEventListener('keydown', (e) => {
       case '+':
       case '=':
         e.preventDefault();
-          performZoom(1.1);
+          performZoom(1.05); /* ✅ Reduzido de 1.1 para 1.05 - zoom mais suave */
         break;
       case '-':
         e.preventDefault();
-          performZoom(0.91);
+          performZoom(0.95); /* ✅ Reduzido de 0.91 para 0.95 - zoom mais suave */
         break;
       case '0':
         e.preventDefault();
@@ -7132,43 +7225,102 @@ if (state.cy) {
 }
 
 // Tornar controles de zoom arrastáveis
-const zoomControls = document.querySelector('.zoom-controls');
+let zoomControls = null; // ✅ Mudado para let e null para inicializar depois
 let isDraggingZoom = false;
 let zoomDragOffset = { x: 0, y: 0 };
 
 function makeZoomControlsDraggable() {
-  if (!zoomControls) return;
+  if (!zoomControls) {
+    console.error('❌ zoomControls não encontrado!');
+    return;
+  }
   
-  // Salvar posição inicial
+  // ✅ CRÍTICO: Prevenir listeners duplicados
+  if (zoomControls.dataset.draggableInitialized === 'true') {
+    console.warn('⚠️ makeZoomControlsDraggable já foi inicializado');
+    return;
+  }
+  zoomControls.dataset.draggableInitialized = 'true';
+  
+  // ✅ CORREÇÃO: Carregar posição salva se existir e for válida (mobile e desktop)
+  const isMobile = window.innerWidth <= 768;
   let savedPosition = localStorage.getItem('zoomControlsPosition');
+  
   if (savedPosition) {
-    const pos = JSON.parse(savedPosition);
-    zoomControls.style.left = pos.x + 'px';
-    zoomControls.style.top = pos.y + 'px';
-    zoomControls.style.right = 'auto';
-    zoomControls.style.bottom = 'auto';
+    try {
+      const pos = JSON.parse(savedPosition);
+      // ✅ Verificar se a posição salva é válida (dentro da viewport)
+      if (pos.x >= 0 && pos.y >= 0 && 
+          pos.x < window.innerWidth && pos.y < window.innerHeight &&
+          pos.x + zoomControls.offsetWidth <= window.innerWidth &&
+          pos.y + zoomControls.offsetHeight <= window.innerHeight) {
+        // Posição válida, aplicar
+        zoomControls.style.left = pos.x + 'px';
+        zoomControls.style.top = pos.y + 'px';
+        zoomControls.style.right = 'auto';
+        zoomControls.style.bottom = 'auto';
+      } else {
+        // Posição inválida, usar CSS padrão
+        resetZoomControlsPositionForMobile();
+      }
+    } catch (e) {
+      // Erro ao parsear, usar CSS padrão
+      resetZoomControlsPositionForMobile();
+    }
+  } else {
+    // Sem posição salva, usar padrão do CSS
+    resetZoomControlsPositionForMobile();
+  }
+  
+  // ✅ Função helper para resetar posição no mobile
+  function resetZoomControlsPositionForMobile() {
+    // Sem posição salva, usar padrão do CSS (bottom/right para mobile, bottom/right para desktop)
+    zoomControls.style.left = '';
+    zoomControls.style.top = '';
+    zoomControls.style.right = '';
+    zoomControls.style.bottom = '';
   }
   
   // Event listeners para arrastar
   zoomControls.addEventListener('mousedown', (e) => {
-    // Só arrastar se não clicou em um botão
-    if (e.target && e.target.classList && (e.target.classList.contains('zoom-btn') || e.target.classList.contains('zoom-icon'))) {
-      return;
+    // ✅ Verificar se clicou em botão ou elemento dentro do botão
+    // O zoom-icon tem pointer-events: none, então o target será o botão ou um span filho
+    const clickedElement = e.target;
+    
+    // ✅ Verificar se está dentro de um botão ou zoom-level (mais confiável que verificar classes diretas)
+    const isInsideButton = clickedElement && (
+      clickedElement.closest('.zoom-btn') ||
+      clickedElement.closest('.zoom-level')
+    );
+    
+    // ✅ Também verificar se é o próprio botão ou level
+    const isDirectButton = clickedElement && clickedElement.classList && (
+      clickedElement.classList.contains('zoom-btn') ||
+      clickedElement.classList.contains('zoom-level')
+    );
+    
+    // ✅ CRÍTICO: Se clicou em qualquer elemento interativo, NÃO arrastar e não prevenir default
+    if (isInsideButton || isDirectButton) {
+      e.stopPropagation(); // ✅ Prevenir propagação
+      e.stopImmediatePropagation(); // ✅ CRÍTICO: Prevenir que outros listeners no mesmo elemento executem
+      return; // ✅ SAIR SEM prevenir default, permitindo que o click do botão funcione
     }
     
+    // ✅ Se chegou aqui, foi clique no container (área vazia), pode arrastar
     isDraggingZoom = true;
     const rect = zoomControls.getBoundingClientRect();
     zoomDragOffset.x = e.clientX - rect.left;
     zoomDragOffset.y = e.clientY - rect.top;
     
     zoomControls.classList.add('dragging');
-    e.preventDefault();
+    e.preventDefault(); // ✅ Só prevenir default quando realmente for arrastar
     console.log('🔍 Iniciando arraste dos controles de zoom');
   });
   
   document.addEventListener('mousemove', (e) => {
     if (!isDraggingZoom) return;
     
+    // ✅ Permitir arrastar em qualquer dispositivo
     const newX = Math.max(0, Math.min(window.innerWidth - zoomControls.offsetWidth, e.clientX - zoomDragOffset.x));
     const newY = Math.max(0, Math.min(window.innerHeight - zoomControls.offsetHeight, e.clientY - zoomDragOffset.y));
     
@@ -7185,21 +7337,36 @@ function makeZoomControlsDraggable() {
       isDraggingZoom = false;
       zoomControls.classList.remove('dragging');
       
-      // Salvar posição
+      // ✅ Salvar posição em qualquer dispositivo (mobile e desktop)
       const rect = zoomControls.getBoundingClientRect();
       localStorage.setItem('zoomControlsPosition', JSON.stringify({
         x: rect.left,
         y: rect.top
       }));
-      
       console.log('🔍 Controles de zoom reposicionados');
     }
   });
   
   // Touch events para dispositivos móveis
   zoomControls.addEventListener('touchstart', (e) => {
-    if (e.target && e.target.classList && (e.target.classList.contains('zoom-btn') || e.target.classList.contains('zoom-icon'))) {
-      return;
+    // ✅ Permitir drag no mobile também - mesma lógica que mousedown
+    const clickedElement = e.target;
+    
+    const isInsideButton = clickedElement && (
+      clickedElement.closest('.zoom-btn') ||
+      clickedElement.closest('.zoom-level')
+    );
+    
+    const isDirectButton = clickedElement && clickedElement.classList && (
+      clickedElement.classList.contains('zoom-btn') ||
+      clickedElement.classList.contains('zoom-level')
+    );
+    
+    // ✅ CRÍTICO: Se clicou em qualquer elemento interativo, NÃO arrastar
+    if (isInsideButton || isDirectButton) {
+      e.stopPropagation();
+      e.stopImmediatePropagation(); // ✅ CRÍTICO: Prevenir outros listeners
+      return; // ✅ SAIR SEM prevenir default
     }
     
     const touch = e.touches[0];
@@ -7208,12 +7375,13 @@ function makeZoomControlsDraggable() {
     zoomDragOffset.y = touch.clientY - rect.top;
     
     zoomControls.classList.add('dragging');
-    e.preventDefault();
+    e.preventDefault(); // ✅ Só prevenir quando realmente for arrastar
   });
   
   zoomControls.addEventListener('touchmove', (e) => {
     if (!zoomControls.classList.contains('dragging')) return;
     
+    // ✅ Permitir arrastar no mobile também
     const touch = e.touches[0];
     const newX = Math.max(0, Math.min(window.innerWidth - zoomControls.offsetWidth, touch.clientX - zoomDragOffset.x));
     const newY = Math.max(0, Math.min(window.innerHeight - zoomControls.offsetHeight, touch.clientY - zoomDragOffset.y));
@@ -7230,18 +7398,82 @@ function makeZoomControlsDraggable() {
     if (zoomControls.classList.contains('dragging')) {
       zoomControls.classList.remove('dragging');
       
-      // Salvar posição
+      // ✅ Salvar posição no mobile também (posição é mantida após drag)
       const rect = zoomControls.getBoundingClientRect();
       localStorage.setItem('zoomControlsPosition', JSON.stringify({
         x: rect.left,
         y: rect.top
       }));
+      console.log('🔍 Controles de zoom reposicionados (touch)');
     }
   });
 }
 
-// Inicializar controles arrastáveis
+// ✅ CRÍTICO: Inicializar controles arrastáveis quando DOM estiver pronto
+function initZoomControls() {
+  zoomControls = document.querySelector('.zoom-controls');
+  if (zoomControls) {
 makeZoomControlsDraggable();
+    console.log('✅ Controles de zoom inicializados');
+  } else {
+    console.error('❌ Controles de zoom não encontrados, tentando novamente...');
+    setTimeout(initZoomControls, 100);
+  }
+}
+
+// Tentar inicializar imediatamente ou aguardar DOM
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initZoomControls);
+} else {
+  initZoomControls();
+}
+
+// ✅ CORREÇÃO: Listener de resize para recalcular posição ao redimensionar
+// Verifica se a posição salva ainda é válida (dentro da viewport)
+let resizeTimeout;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimeout);
+  resizeTimeout = setTimeout(() => {
+    // ✅ CRÍTICO: Buscar elemento caso não exista ainda
+    if (!zoomControls) {
+      zoomControls = document.querySelector('.zoom-controls');
+    }
+    if (!zoomControls) return;
+    
+    const isMobile = window.innerWidth <= 768;
+    let savedPosition = localStorage.getItem('zoomControlsPosition');
+    
+    // ✅ Aplicar posição salva se válida (mobile e desktop)
+    if (savedPosition) {
+      try {
+        const pos = JSON.parse(savedPosition);
+        // ✅ Verificar se posição salva ainda é válida após resize
+        if (pos.x >= 0 && pos.y >= 0 && 
+            pos.x < window.innerWidth && pos.y < window.innerHeight &&
+            pos.x + zoomControls.offsetWidth <= window.innerWidth &&
+            pos.y + zoomControls.offsetHeight <= window.innerHeight) {
+          // Posição válida, restaurar (apenas desktop)
+          zoomControls.style.left = pos.x + 'px';
+          zoomControls.style.top = pos.y + 'px';
+          zoomControls.style.right = 'auto';
+          zoomControls.style.bottom = 'auto';
+        } else {
+          // Posição inválida após resize, usar CSS padrão
+          zoomControls.style.left = '';
+          zoomControls.style.top = '';
+          zoomControls.style.right = '';
+          zoomControls.style.bottom = '';
+        }
+      } catch (e) {
+        // Erro ao parsear, resetar
+        zoomControls.style.left = '';
+        zoomControls.style.top = '';
+        zoomControls.style.right = '';
+        zoomControls.style.bottom = '';
+      }
+    }
+  }, 150);
+});
 
 // ========================================
 // EVENT LISTENER GLOBAL PARA LINKS SEGUROS
@@ -7305,11 +7537,13 @@ observer.observe(document.body, {
 // Botão para resetar posição dos controles
 function resetZoomControlsPosition() {
   localStorage.removeItem('zoomControlsPosition');
+  // ✅ CORREÇÃO: Resetar completamente para deixar CSS controlar a posição
+  const isMobile = window.innerWidth <= 768;
   zoomControls.style.left = '';
   zoomControls.style.top = '';
-  zoomControls.style.right = '20px';
-  zoomControls.style.bottom = '20px';
-  console.log('🔍 Posição dos controles resetada para padrão');
+  zoomControls.style.right = '';
+  zoomControls.style.bottom = '';
+  console.log(`🔍 Posição dos controles resetada para padrão (CSS) - ${isMobile ? 'Mobile' : 'Desktop'}`);
 }
 
 // Inicializar display do zoom

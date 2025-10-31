@@ -75,11 +75,12 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 20px;
+    padding: 0 16px; /* ✅ MINIMALISTA: Padding reduzido (era 20px) */
     background: var(--bg);
     border-bottom: 1px solid var(--border);
     z-index: 100;
     box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    min-height: 50px; /* ✅ MINIMALISTA: Header mais compacto */
     /* ✅ CORREÇÃO: Melhorar touch scrolling */
     touch-action: pan-x pan-y;
     -webkit-overflow-scrolling: touch;
@@ -88,9 +89,9 @@
   .header-brand {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px; /* ✅ MINIMALISTA: Gap reduzido */
     font-weight: 700;
-    font-size: 18px;
+    font-size: 16px; /* ✅ MINIMALISTA: Tamanho reduzido (era 18px) */
   }
   
   .brand-text {
@@ -98,26 +99,26 @@
   }
   
   .brand-icon {
-    font-size: 24px;
+    font-size: 20px; /* ✅ MINIMALISTA: Ícone menor (era 24px) */
   }
   
   .header-nav {
     display: flex;
-    gap: 8px;
+    gap: 4px; /* ✅ MINIMALISTA: Gap reduzido de 8px para 4px */
   }
   
   .nav-btn {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 2px;
-    padding: 8px 12px;
+    gap: 1px; /* ✅ MINIMALISTA: Gap interno reduzido */
+    padding: 4px 6px; /* ✅ MINIMALISTA: Padding reduzido ainda mais (era 8px 12px) */
     border: 1px solid var(--border);
     background: var(--bg);
-    border-radius: 8px;
+    border-radius: 5px; /* ✅ MINIMALISTA: Bordas menos arredondadas */
     cursor: pointer;
     transition: all 0.2s ease;
-    min-width: 60px;
+    min-width: 42px; /* ✅ MINIMALISTA: Largura reduzida ainda mais (era 60px) */
   }
   
   .nav-btn:hover {
@@ -133,12 +134,12 @@
   }
   
   .nav-icon {
-    font-size: 16px;
+    font-size: 16px; /* ✅ Desktop: Ícone maior para melhor visibilidade */
   }
   
   .nav-text {
-    font-size: 10px;
-    font-weight: 600;
+    font-size: 8px; /* ✅ MINIMALISTA: Texto ainda menor (era 10px) */
+    font-weight: 500; /* ✅ MINIMALISTA: Peso reduzido (era 600) */
   }
   
   /* ========================================
@@ -222,10 +223,11 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 20px;
+    padding: 0 16px; /* ✅ MINIMALISTA: Padding reduzido (era 20px) */
     background: var(--bg);
     border-top: 1px solid var(--border);
-    font-size: 12px;
+    font-size: 11px; /* ✅ MINIMALISTA: Fonte menor (era 12px) */
+    min-height: 42px; /* ✅ MINIMALISTA: Footer mais compacto */
     color: var(--muted);
     z-index: 90; /* ✅ Garantir que footer fique acima de outros elementos */
     position: relative;
@@ -237,16 +239,16 @@
   
   .status-actions {
     display: flex;
-    gap: 8px;
+    gap: 4px; /* ✅ MINIMALISTA: Gap reduzido de 8px para 4px */
   }
   
   .status-btn {
-    padding: 4px 8px;
+    padding: 3px 6px; /* ✅ MINIMALISTA: Padding reduzido (era 4px 8px) */
     border: 1px solid var(--border);
     background: var(--bg);
     border-radius: 4px;
     cursor: pointer;
-    font-size: 12px;
+    font-size: 11px; /* ✅ MINIMALISTA: Fonte menor (era 12px) */
     transition: all 0.2s ease;
   }
   
@@ -302,6 +304,13 @@
       border-radius: 8px; /* ✅ Mais arredondado */
     }
     
+    /* ✅ Garantir cor original do SVG no mobile */
+    .status-btn svg {
+      fill: #666 !important; /* ✅ Cor original cinza no mobile */
+      width: 24px !important; /* ✅ Aumentado para mobile */
+      height: 24px !important;
+    }
+    
     .status-btn:hover {
       background: rgba(0,0,0,0.05);
     }
@@ -341,6 +350,13 @@
       min-width: var(--touch-min); /* 44px */
       min-height: var(--touch-min);
     }
+    
+    /* ✅ Garantir cor original do SVG no mobile pequeno */
+    .status-btn svg {
+      fill: #666 !important; /* ✅ Cor original cinza no mobile */
+      width: 22px !important; /* ✅ Aumentado para mobile pequeno */
+      height: 22px !important;
+    }
   }
   
   /* Mobile Extra Small (≤375px) */
@@ -368,6 +384,13 @@
       font-size: 15px;
       min-width: var(--touch-min); /* 44px - não reduzir mais */
       min-height: var(--touch-min);
+    }
+    
+    /* ✅ Garantir cor original do SVG no mobile extra pequeno */
+    .status-btn svg {
+      fill: #666 !important; /* ✅ Cor original cinza no mobile */
+      width: 20px !important; /* ✅ Aumentado para mobile extra pequeno */
+      height: 20px !important;
     }
   }
   
@@ -625,24 +648,34 @@
     flex-direction: column;
     padding: 16px;
     overflow: hidden;
+    overflow-x: hidden !important; /* ✅ Prevenir scroll lateral */
+    min-height: 0; /* ✅ Essencial para flex funcionar */
   }
   
   .floating-chat-log {
-    flex: 1;
+    flex: 0 1 auto; /* ✅ Não cresce, pode encolher - respeita max-height */
     overflow-y: auto;
+    overflow-x: hidden !important; /* ✅ Prevenir scroll lateral */
     padding: 8px;
     background: #f8f9fa;
     border-radius: 8px;
     margin-bottom: 12px;
-    max-height: 250px;
+    max-height: 180px; /* ✅ Limitar para mostrar ~2 mensagens por vez */
+    min-height: 100px; /* ✅ Altura mínima para visualização */
+    height: 180px; /* ✅ Altura fixa para garantir ~2 mensagens */
     font-size: 13px;
     line-height: 1.4;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    word-break: break-word;
   }
   
   .floating-chat-input-section {
     display: flex;
     flex-direction: column;
     gap: 8px;
+    flex-shrink: 0 !important; /* ✅ FIXO - não encolhe, sempre visível na parte inferior */
+    margin-top: auto; /* ✅ Empurra para baixo */
   }
   
   .floating-chat-input textarea {
@@ -794,9 +827,17 @@
     }
     
     .floating-chat-log {
-      max-height: 45vh;
+      flex: 0 1 auto !important; /* ✅ Não cresce no mobile */
+      max-height: 200px !important; /* ✅ Limitar para mostrar ~2 mensagens no mobile */
+      height: 200px !important; /* ✅ Altura fixa no mobile */
+      min-height: 120px !important;
       -webkit-overflow-scrolling: touch;
       overscroll-behavior: contain;
+      overflow-x: hidden !important; /* ✅ Prevenir scroll lateral */
+    }
+    
+    .floating-chat-input-section {
+      flex-shrink: 0 !important; /* ✅ FIXO no mobile - não encolhe */
     }
     
     .floating-chat-input textarea {
@@ -831,7 +872,21 @@
     }
     
     .floating-chat-log {
-      max-height: 40vh;
+      flex: 0 1 auto !important; /* ✅ Não cresce no mobile pequeno */
+      max-height: 180px !important; /* ✅ Limitar para mostrar ~2 mensagens no mobile pequeno */
+      height: 180px !important; /* ✅ Altura fixa no mobile pequeno */
+      min-height: 100px !important;
+      overflow-x: hidden !important; /* ✅ Prevenir scroll lateral */
+    }
+    
+    .floating-chat-body {
+      display: flex !important; /* ✅ Garantir flex no mobile */
+      flex-direction: column;
+      min-height: 0; /* ✅ Essencial para flex funcionar */
+    }
+    
+    .floating-chat-input-section {
+      flex-shrink: 0 !important; /* ✅ FIXO no mobile pequeno - não encolhe */
     }
     
     .floating-chat-header {
@@ -899,6 +954,15 @@
     font-size: 13px;
     line-height: 1.4;
     word-wrap: break-word;
+    overflow-wrap: break-word;
+    word-break: break-word;
+    overflow-x: hidden !important; /* ✅ Prevenir scroll lateral */
+    overflow-y: visible !important; /* ✅ SEM scroll individual - mostrar todo texto */
+    max-height: none !important; /* ✅ SEM altura máxima - mostrar todo texto */
+    height: auto !important; /* ✅ Altura automática baseada no conteúdo */
+    min-height: auto !important; /* ✅ SEM altura mínima forçada */
+    display: block !important; /* ✅ Display block para layout normal */
+    text-align: left; /* ✅ Texto alinhado à esquerda (mais natural) */
   }
   
   .fmsg.user {
@@ -920,7 +984,7 @@
     border-left: 4px solid #4caf50;
     color: #1b5e20;
     font-style: italic;
-    text-align: center;
+    text-align: center; /* ✅ Sistema mantém centralizado */
   }
   
   /* ========================================
@@ -987,7 +1051,10 @@
     padding: 8px;
     border-radius: 4px;
     margin: 4px 0;
-    overflow-x: auto;
+    overflow-x: hidden !important; /* ✅ Prevenir scroll lateral */
+    overflow-wrap: break-word;
+    word-break: break-all;
+    white-space: pre-wrap; /* ✅ Quebrar linhas longas */
     font-family: 'Space Mono', monospace;
     font-size: 12px;
     color: #311b92;
@@ -1051,6 +1118,7 @@
     background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
     border: 2px solid #28a745;
     box-shadow: 0 12px 40px rgba(40, 167, 69, 0.15);
+    z-index: 200; /* ✅ Acima do zoom (150) - mesmo nível dos outros chats */
   }
   
   .specialist-chat .floating-chat-header {
@@ -1163,7 +1231,10 @@
     padding: 8px;
     border-radius: 4px;
     margin: 4px 0;
-    overflow-x: auto;
+    overflow-x: hidden !important; /* ✅ Prevenir scroll lateral */
+    overflow-wrap: break-word;
+    word-break: break-all;
+    white-space: pre-wrap; /* ✅ Quebrar linhas longas */
     font-family: 'Space Mono', monospace;
     font-size: 12px;
     color: #5d4037;
@@ -1907,8 +1978,8 @@
     }
     
     .nav-btn {
-      min-width: 48px; /* ✅ Touch-friendly */
-      min-height: var(--touch-min); /* 44px */
+      min-width: 48px !important; /* ✅ Touch-friendly - garantir mínimo para mobile */
+      min-height: 44px !important; /* ✅ Garantir altura mínima para toque */
       padding: 6px 8px;
       transition: all 0.3s ease;
       flex-shrink: 0;
@@ -1917,11 +1988,11 @@
     }
     
     .nav-icon {
-      font-size: 16px; /* ✅ Maior para legibilidade */
+      font-size: 18px !important; /* ✅ Mobile: Maior para legibilidade e toque */
     }
     
     .nav-text {
-      font-size: 9px; /* ✅ Melhor legibilidade */
+      font-size: 10px !important; /* ✅ Mobile: Melhor legibilidade */
     }
     
     /* ✅ CORREÇÃO: Menu expandido quando há mapa ativo (ocupa espaço do texto) */
@@ -2082,18 +2153,18 @@
     
     .nav-btn {
       flex-shrink: 0;
-      min-width: 46px; /* ✅ Touch-friendly */
-      min-height: var(--touch-min); /* 44px */
+      min-width: 44px !important; /* ✅ Touch-friendly - garantir mínimo para mobile pequeno */
+      min-height: 44px !important; /* ✅ Garantir altura mínima para toque */
       padding: 5px 8px;
       margin: 0;
     }
     
     .nav-icon {
-      font-size: 15px;
+      font-size: 16px !important; /* ✅ Mobile pequeno: Garantir visibilidade */
     }
     
     .nav-text {
-      font-size: 8px;
+      font-size: 9px !important; /* ✅ Mobile pequeno: Garantir legibilidade */
     }
     
     /* ✅ Menu COM mapa: otimizar espaço */
@@ -2314,7 +2385,18 @@
     background: #f8f9fa;
     font-weight: 600;
   }
-  .node-tooltip .tt-text a { color: var(--accent); text-decoration: underline; }
+  /* ✅ BLOQUEIO DE LINKS: Desabilitar links completamente */
+  .node-tooltip .tt-text a,
+  .tab-content-body a,
+  .ex-output a,
+  .ia-tutor-chat a,
+  .floating-chat-log a,
+  .specialist-chat-log a {
+    pointer-events: none !important;
+    cursor: default !important;
+    color: var(--text) !important;
+    text-decoration: none !important;
+  }
   .node-tooltip .tt-text code { background: #f5f5f5; padding: 2px 6px; border-radius: 4px; font-family: "Space Mono", monospace; font-size: 12px; }
   .node-tooltip .tt-text pre { background: #f5f5f5; padding: 8px; border-radius: 6px; overflow: auto; font-family: "Space Mono", monospace; font-size: 12px; margin: 8px 0; }
   .node-tooltip .tt-text ul,
@@ -2440,11 +2522,23 @@
     padding:10px 12px; border-bottom:1px solid var(--border); font-weight:600;
   }
   .floating-chat-log {
-    padding: 10px;
-    max-height: 260px;
-    overflow: auto;
-    display: grid;
-    gap: 8px;
+    flex: 0 1 auto !important; /* ✅ Não cresce, pode encolher - respeita max-height */
+    overflow-y: auto !important;
+    overflow-x: hidden !important; /* ✅ Prevenir scroll lateral */
+    padding: 8px !important;
+    max-height: 180px !important; /* ✅ Limitar para mostrar ~2 mensagens por vez */
+    height: 180px !important; /* ✅ Altura fixa para garantir ~2 mensagens */
+    min-height: 100px !important;
+    display: block !important; /* ✅ Display block, não grid */
+    gap: 0; /* ✅ Gap removido - usar margin-bottom nas mensagens */
+    background: #f8f9fa;
+    border-radius: 8px;
+    margin-bottom: 12px;
+    font-size: 13px;
+    line-height: 1.4;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    word-break: break-word;
   }
   .floating-chat-input {
     padding: 10px;
@@ -2456,7 +2550,14 @@
   .floating-chat-input textarea {
     flex:1; resize:vertical; min-height:44px; max-height:120px;
   }
-  .fmsg { padding:8px 10px; border-radius:8px; font-size:13px; }
+  .fmsg { 
+    padding:8px 10px; 
+    border-radius:8px; 
+    font-size:13px;
+    overflow-y: visible !important; /* ✅ SEM scroll individual - mostrar todo texto */
+    max-height: none !important; /* ✅ SEM altura máxima */
+    height: auto !important; /* ✅ Altura automática */
+  }
   .fmsg.user { background:#f5f5f5; align-self:flex-end; }
   .fmsg.system { background:#fff; border:1px solid var(--border); color:var(--muted); }
   
@@ -2676,7 +2777,7 @@
     border: 1px solid var(--border);
     border-radius: 12px;
     box-shadow: 0 20px 60px rgba(0,0,0,0.2);
-    z-index: 90; /* below header (100) but above content */
+    z-index: 160; /* ✅ Acima do zoom (150) e abaixo dos popups principais (200) */
     display: none; /* Escondido por padrão */
     flex-direction: column;
     font-family: var(--font-family-main);
@@ -2960,7 +3061,7 @@
     }
     
     .tab-content-body {
-      padding-bottom: 36px !important; /* ✅ ✅ AUMENTADO: De 24px para 36px - mais espaço no mobile */
+      padding-bottom: 100px !important; /* ✅ ✅ ESPAÇO MÁXIMO: Muito espaço no mobile para evitar corte */
       min-height: fit-content !important;
     }
     
@@ -2969,6 +3070,40 @@
       overflow: visible !important;
       max-height: none !important;
       padding-bottom: 24px !important; /* ✅ Espaço extra no mobile */
+      padding: 16px;
+      border-radius: 6px;
+    }
+    
+    /* ✅ MOBILE: Ajustar tamanhos de fonte */
+    .ex-output > h1:first-child,
+    .ex-output > h2:first-child,
+    .ex-output > h3:first-child {
+      font-size: 16px !important;
+      margin-bottom: 6px;
+      padding-bottom: 8px;
+    }
+    
+    .ex-output h2,
+    .ex-output h3 {
+      font-size: 14px !important;
+      margin-top: 20px;
+      margin-bottom: 12px;
+    }
+    
+    .ex-output p,
+    .ex-output ol li,
+    .ex-output ul li {
+      font-size: 12px !important;
+    }
+    
+    .ex-output .answers {
+      margin-top: 24px;
+      padding: 16px;
+    }
+    
+    .ex-output .answers::before {
+      font-size: 14px !important;
+      margin-bottom: 12px;
     }
     
     .node-slider-content {
@@ -3034,7 +3169,7 @@
     }
     
     .tab-content-body {
-      padding-bottom: 32px !important; /* ✅ ✅ AUMENTADO: De 20px para 32px - mais espaço em telas pequenas */
+      padding-bottom: 90px !important; /* ✅ ✅ ESPAÇO MÁXIMO: Muito espaço em telas pequenas para evitar corte */
       min-height: fit-content !important;
     }
     
@@ -3042,7 +3177,41 @@
     .ex-output {
       overflow: visible !important;
       max-height: none !important;
-      padding-bottom: 20px !important; /* ✅ Espaço extra em telas pequenas */
+      padding: 12px; /* ✅ Padding base */
+      padding-bottom: 20px !important; /* ✅ Espaço extra no final (sobrescreve padding base) */
+      border-radius: 6px;
+    }
+    
+    /* ✅ MOBILE PEQUENO: Ajustar tamanhos de fonte */
+    .ex-output > h1:first-child,
+    .ex-output > h2:first-child,
+    .ex-output > h3:first-child {
+      font-size: 15px !important;
+      margin-bottom: 6px;
+      padding-bottom: 8px;
+    }
+    
+    .ex-output h2,
+    .ex-output h3 {
+      font-size: 13px !important;
+      margin-top: 16px;
+      margin-bottom: 10px;
+    }
+    
+    .ex-output p,
+    .ex-output ol li,
+    .ex-output ul li {
+      font-size: 11px !important;
+    }
+    
+    .ex-output .answers {
+      margin-top: 20px;
+      padding: 12px;
+    }
+    
+    .ex-output .answers::before {
+      font-size: 13px !important;
+      margin-bottom: 10px;
     }
     
     .node-slider-content {
@@ -3443,18 +3612,18 @@
   
   .node-info {
     position: absolute;
-    width: 30px; /* slightly larger for better click area */
-    height: 30px;
-    border-radius: 8px;
+    width: 24px; /* ✅ Reduzido de 30px para 24px */
+    height: 24px;
+    border-radius: 6px;
     background: #ffffff; /* 100% solid white - no transparency */
-    border: 2px solid #007acc; /* stronger border for visibility */
+    border: 1.5px solid #007acc; /* ✅ Reduzido de 2px para 1.5px */
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 13px;
+    font-size: 11px; /* ✅ Reduzido de 13px para 11px */
     font-weight: bold;
     cursor: pointer;
-    box-shadow: 0 3px 12px rgba(0,122,204,0.25);
+    box-shadow: 0 2px 8px rgba(0,122,204,0.25); /* ✅ Reduzido proporcionalmente */
     user-select: none;
     z-index: 50; /* higher z-index to be above everything */
     pointer-events: auto; /* explicitly capture all pointer events */
@@ -3467,7 +3636,7 @@
   .node-info:focus,
   .node-info:hover {
     outline: none;
-    box-shadow: 0 4px 12px rgba(0,122,204,0.3);
+    box-shadow: 0 3px 10px rgba(0,122,204,0.3); /* ✅ Reduzido proporcionalmente */
     border-color: #007acc;
     background: rgba(255,255,255,1);
     transform: scale(1.1); /* slight grow on hover */
@@ -3490,10 +3659,10 @@
   .node-info::before {
     content: '';
     position: absolute;
-    top: -2px;
-    left: -2px;
-    right: -2px;
-    bottom: -2px;
+    top: -1.5px; /* ✅ Reduzido proporcionalmente */
+    left: -1.5px;
+    right: -1.5px;
+    bottom: -1.5px;
     background: transparent;
     z-index: 1;
     pointer-events: auto; /* capture all clicks in expanded area */
@@ -4098,20 +4267,22 @@
     50% { transform: scale(1.1); opacity: 1; }
   }
   
-  /* Controles de Zoom Arrastáveis */
+  /* ✅ MINIMALISTA: Controles de Zoom Compactos */
   .zoom-controls {
     position: fixed;
-    bottom: 20px;
-    right: 20px;
+    top: 50%; /* ✅ DESKTOP: Centralizado verticalmente */
+    right: 16px; /* ✅ DESKTOP: Lateral direita */
+    transform: translateY(-50%); /* ✅ DESKTOP: Centralizar verticalmente */
+    bottom: auto; /* ✅ DESKTOP: Remover bottom */
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    z-index: 50;
+    gap: 3px; /* ✅ MINIMALISTA: Gap reduzido de 8px para 3px */
+    z-index: 150; /* ✅ Abaixo dos popups (200) e acima do mapa (0-100) */
     background: rgba(255, 255, 255, 0.95);
     backdrop-filter: blur(10px);
-    border-radius: 12px;
-    padding: 12px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+    border-radius: 8px; /* ✅ MINIMALISTA: Bordas menos arredondadas (era 12px) */
+    padding: 6px; /* ✅ MINIMALISTA: Padding reduzido de 12px para 6px */
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12); /* ✅ MINIMALISTA: Sombra mais sutil */
     border: 1px solid rgba(255, 255, 255, 0.2);
     user-select: none;
     cursor: move; /* indica que é arrastável */
@@ -4121,48 +4292,51 @@
   .zoom-controls:hover {
     background: rgba(255, 255, 255, 1);
     box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
-    transform: translateY(-2px);
+    transform: translateY(-50%) translateY(-2px); /* ✅ DESKTOP: Manter centralização + hover */
   }
   
   .zoom-controls.dragging {
     cursor: grabbing;
-    transform: rotate(2deg) scale(1.05);
+    transform: translateY(-50%) rotate(2deg) scale(1.05); /* ✅ DESKTOP: Manter centralização vertical + rotação */
     box-shadow: 0 16px 48px rgba(0, 0, 0, 0.3);
-    z-index: 60; /* maior z-index quando arrastando */
+    z-index: 155; /* ✅ Ligeiramente acima quando arrastando, mas ainda abaixo dos popups */
   }
   
-  /* Header arrastável para os controles */
+  /* ✅ MINIMALISTA: Header arrastável menor */
   .zoom-controls::before {
     content: '⋮⋮';
     position: absolute;
-    top: 4px;
+    top: 2px; /* ✅ MINIMALISTA: Posição ajustada */
     left: 50%;
     transform: translateX(-50%);
     color: #007acc;
-    font-size: 12px;
-    font-weight: bold;
-    letter-spacing: 2px;
-    opacity: 0.6;
+    font-size: 9px; /* ✅ MINIMALISTA: Reduzido de 12px */
+    font-weight: 600; /* ✅ MINIMALISTA: Peso reduzido */
+    letter-spacing: 1px; /* ✅ MINIMALISTA: Espaçamento reduzido */
+    opacity: 0.5; /* ✅ MINIMALISTA: Mais discreto */
     pointer-events: none;
   }
   
+  /* ✅ MINIMALISTA: Botões de zoom menores */
   .zoom-btn {
-    width: 44px;
-    height: 44px;
+    width: 28px; /* ✅ MINIMALISTA: Reduzido ainda mais (era 44px, depois 32px) */
+    height: 28px; /* ✅ MINIMALISTA: Reduzido ainda mais (era 44px, depois 32px) */
     border: none;
-    border-radius: 8px;
+    border-radius: 6px; /* ✅ MINIMALISTA: Bordas menos arredondadas */
     background: linear-gradient(135deg, #007acc, #0056b3);
     color: white;
-    cursor: pointer;
+    cursor: pointer !important; /* ✅ CRÍTICO: Garantir cursor pointer nos botões */
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 18px;
-    font-weight: bold;
+    font-size: 12px; /* ✅ MINIMALISTA: Reduzido ainda mais (era 18px) */
+    font-weight: 600; /* ✅ MINIMALISTA: Peso reduzido (era bold) */
     transition: all 0.2s ease;
-    box-shadow: 0 2px 8px rgba(0, 122, 204, 0.3);
+    box-shadow: 0 2px 6px rgba(0, 122, 204, 0.25); /* ✅ MINIMALISTA: Sombra menor */
     position: relative;
     overflow: hidden;
+    z-index: 2 !important; /* ✅ CRÍTICO: Botões acima do container para garantir cliques */
+    pointer-events: auto !important; /* ✅ CRÍTICO: Garantir que botões recebam cliques */
   }
   
   .zoom-btn:hover {
@@ -4186,12 +4360,13 @@
     box-shadow: 0 4px 16px rgba(40, 167, 69, 0.4);
   }
   
+  /* ✅ MINIMALISTA: Botão reset menor */
   .zoom-btn.zoom-reset {
     background: linear-gradient(135deg, #6c757d, #495057);
-    box-shadow: 0 2px 8px rgba(108, 117, 125, 0.3);
-    font-size: 12px;
-    width: 32px;
-    height: 24px;
+    box-shadow: 0 2px 6px rgba(108, 117, 125, 0.25); /* ✅ MINIMALISTA: Sombra menor */
+    font-size: 9px; /* ✅ MINIMALISTA: Reduzido ainda mais (era 12px) */
+    width: 28px; /* ✅ MINIMALISTA: Mantém mesmo tamanho que outros botões */
+    height: 22px; /* ✅ MINIMALISTA: Altura reduzida */
   }
   
   .zoom-btn.zoom-reset:hover {
@@ -4200,19 +4375,28 @@
   }
   
   .zoom-icon {
-    font-size: 20px;
+    font-size: 12px; /* ✅ MINIMALISTA: Reduzido ainda mais (era 20px) */
     line-height: 1;
-    pointer-events: none;
+    pointer-events: none; /* ✅ Ícone não recebe cliques, apenas visual */
   }
   
+  /* ✅ CRÍTICO: Garantir que botões de zoom sejam clicáveis mesmo com container arrastável */
+  .zoom-controls .zoom-btn,
+  .zoom-controls .zoom-level {
+    pointer-events: auto !important; /* ✅ Garantir cliques nos botões */
+    position: relative;
+    z-index: 10 !important; /* ✅ Acima do container */
+  }
+  
+  /* ✅ MINIMALISTA: Nível de zoom compacto */
   .zoom-level {
     background: rgba(0, 0, 0, 0.8);
     color: white;
-    padding: 8px 12px;
-    border-radius: 6px;
+    padding: 4px 8px; /* ✅ MINIMALISTA: Padding reduzido (era 8px 12px) */
+    border-radius: 4px; /* ✅ MINIMALISTA: Bordas menos arredondadas */
+    font-size: 10px; /* ✅ MINIMALISTA: Fonte menor */
     text-align: center;
-    font-size: 12px;
-    font-weight: bold;
+    font-weight: 600; /* ✅ MINIMALISTA: Peso reduzido */
     font-family: 'Space Mono', monospace;
     margin-top: 4px;
     min-width: 50px;
@@ -4225,74 +4409,129 @@
   /* Mobile Large (≤768px) */
   @media (max-width: 768px) {
     .zoom-controls {
-      bottom: 70px; /* ✅ Acima do footer */
-      right: 12px;
-      padding: 12px;
-      gap: 8px;
-      flex-direction: column; /* ✅ Vertical */
+      top: auto !important; /* ✅ MOBILE: Remover top */
+      bottom: 70px !important; /* ✅ Acima do footer, próximo à lixeira */
+      right: 12px !important; /* ✅ Lado direito, próximo ao rodapé */
+      left: auto !important; /* ✅ Garantir que não tenha left */
+      transform: none !important; /* ✅ MOBILE: Remover transform de centralização */
+      padding: 6px !important; /* ✅ MOBILE: Padding compacto */
+      gap: 4px !important; /* ✅ MOBILE: Gap horizontal */
+      flex-direction: row !important; /* ✅ HORIZONTAL: + e - lado a lado */
       touch-action: manipulation;
       -webkit-tap-highlight-color: transparent;
     }
     
+    /* ✅ MOBILE: Remover transform no hover */
+    .zoom-controls:hover {
+      transform: none !important; /* ✅ MOBILE: Sem transform no hover */
+    }
+    
+    .zoom-controls.dragging {
+      transform: none !important; /* ✅ MOBILE: Sem transform ao arrastar */
+    }
+    
+    /* ✅ MOBILE: Header arrastável horizontal */
+    .zoom-controls::before {
+      content: '⋮'; /* ✅ MOBILE: Um único ícone para horizontal */
+      top: 50%;
+      left: 2px; /* ✅ MOBILE: Lado esquerdo */
+      transform: translateY(-50%); /* ✅ MOBILE: Centralizar verticalmente */
+    }
+    
+    /* ✅ MOBILE: Esconder botões extras, mostrar apenas + e - */
+    .zoom-controls .zoom-fit,
+    .zoom-controls .zoom-reset,
+    .zoom-controls .zoom-level {
+      display: none !important;
+    }
+    
     .zoom-btn {
-      width: var(--touch-comfortable); /* 48px */
-      height: var(--touch-comfortable);
-      min-width: var(--touch-comfortable);
-      min-height: var(--touch-comfortable);
-      font-size: 18px;
+      width: 36px !important; /* ✅ MOBILE: Reduzido de 40px para 36px (ainda toque-friendly) */
+      height: 36px !important;
+      min-width: 36px !important;
+      min-height: 36px !important;
+      font-size: 14px !important; /* ✅ MOBILE: Reduzido de 16px para 14px */
       touch-action: manipulation;
       -webkit-tap-highlight-color: transparent;
     }
     
     .zoom-icon {
-      font-size: 20px;
+      font-size: 15px !important; /* ✅ MOBILE: Reduzido de 18px para 15px */
     }
     
     .zoom-level {
-      padding: 8px 10px;
-      font-size: 12px;
-      min-width: 50px;
+      padding: 6px 8px !important; /* ✅ MOBILE: Reduzido padding */
+      font-size: 11px !important; /* ✅ MOBILE: Reduzido de 12px para 11px */
+      min-width: 42px !important; /* ✅ MOBILE: Reduzido de 50px para 42px */
       text-align: center;
     }
     
     .zoom-btn.zoom-reset {
-      width: var(--touch-comfortable);
-      height: 32px;
-      font-size: 11px;
+      width: 36px !important; /* ✅ MOBILE: Reduzido de 40px para 36px */
+      height: 28px !important;
+      font-size: 10px !important; /* ✅ MOBILE: Reduzido de 11px para 10px */
     }
   }
   
   /* Mobile Small (≤480px) */
   @media (max-width: 480px) {
     .zoom-controls {
-      bottom: 66px; /* ✅ Ajustar para footer */
-      right: 10px;
-      padding: 10px;
-      gap: 6px;
+      top: auto !important; /* ✅ MOBILE PEQUENO: Remover top */
+      bottom: 66px !important; /* ✅ Ajustar para footer */
+      right: 10px !important; /* ✅ Lado direito, próximo ao rodapé */
+      left: auto !important; /* ✅ Garantir que não tenha left */
+      transform: none !important; /* ✅ MOBILE PEQUENO: Remover transform de centralização */
+      padding: 6px !important; /* ✅ MOBILE PEQUENO: Padding compacto */
+      gap: 3px !important; /* ✅ MOBILE PEQUENO: Gap horizontal */
+      flex-direction: row !important; /* ✅ HORIZONTAL: + e - lado a lado */
+    }
+    
+    /* ✅ MOBILE PEQUENO: Remover transform no hover e drag */
+    .zoom-controls:hover {
+      transform: none !important; /* ✅ MOBILE PEQUENO: Sem transform no hover */
+    }
+    
+    .zoom-controls.dragging {
+      transform: none !important; /* ✅ MOBILE PEQUENO: Sem transform ao arrastar */
+    }
+    
+    /* ✅ MOBILE PEQUENO: Header arrastável horizontal */
+    .zoom-controls::before {
+      content: '⋮'; /* ✅ MOBILE: Um único ícone para horizontal */
+      top: 50%;
+      left: 2px; /* ✅ MOBILE: Lado esquerdo */
+      transform: translateY(-50%); /* ✅ MOBILE: Centralizar verticalmente */
+    }
+    
+    /* ✅ MOBILE PEQUENO: Esconder botões extras, mostrar apenas + e - */
+    .zoom-controls .zoom-fit,
+    .zoom-controls .zoom-reset,
+    .zoom-controls .zoom-level {
+      display: none !important;
     }
     
     .zoom-btn {
-      width: var(--touch-min); /* 44px */
-      height: var(--touch-min);
-      min-width: var(--touch-min);
-      min-height: var(--touch-min);
-      font-size: 16px;
+      width: 32px !important; /* ✅ MOBILE PEQUENO: Reduzido de 38px para 32px (ainda clicável) */
+      height: 32px !important;
+      min-width: 32px !important;
+      min-height: 32px !important;
+      font-size: 12px !important; /* ✅ MOBILE PEQUENO: Reduzido de 14px para 12px */
     }
     
     .zoom-icon {
-      font-size: 18px;
+      font-size: 13px !important; /* ✅ MOBILE PEQUENO: Reduzido de 16px para 13px */
     }
     
     .zoom-level {
-      padding: 6px 8px;
-      font-size: 11px;
-      min-width: 44px;
+      padding: 4px 6px !important; /* ✅ MOBILE PEQUENO: Reduzido padding */
+      font-size: 10px !important; /* ✅ MOBILE PEQUENO: Reduzido de 11px para 10px */
+      min-width: 36px !important; /* ✅ MOBILE PEQUENO: Reduzido de 44px para 36px */
     }
     
     .zoom-btn.zoom-reset {
-      width: var(--touch-min);
-      height: 28px;
-      font-size: 10px;
+      width: 32px !important; /* ✅ MOBILE PEQUENO: Reduzido de 38px para 32px */
+      height: 24px !important; /* ✅ MOBILE PEQUENO: Reduzido de 28px para 24px */
+      font-size: 9px !important; /* ✅ MOBILE PEQUENO: Reduzido de 10px para 9px */
     }
   }
   .model-selector-close {
@@ -4469,6 +4708,7 @@
   
   .tab-content-body {
     padding: 16px;
+    padding-bottom: 120px !important; /* ✅ ✅ ESPAÇO MÁXIMO: Garantir que texto nunca seja cortado */
     overflow-y: auto;
     max-height: calc(100vh - 200px);
     min-height: 400px;
@@ -4550,11 +4790,124 @@
   .generate-quiz { margin-top:8px; }
   .quiz-area { border-top:1px dashed var(--border); padding-top:12px; }
   
-  /* ✅ ÁREA DE EXERCÍCIOS: Evitar scroll duplo */
+  /* ✅ ÁREA DE EXERCÍCIOS: Estilo de PROVA ORGANIZADA */
   .ex-output {
     overflow: visible !important; /* ✅ Não criar barra própria */
     max-height: none !important; /* ✅ Sem limite próprio */
-    padding-bottom: 32px !important; /* ✅ Espaço extra no final */
+    background: #ffffff;
+    padding: 24px; /* ✅ Padding base */
+    padding-bottom: 32px !important; /* ✅ Espaço extra no final (sobrescreve padding base) */
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  }
+  
+  /* ✅ Título da prova */
+  .ex-output > h1:first-child,
+  .ex-output > h2:first-child,
+  .ex-output > h3:first-child {
+    font-size: 20px;
+    font-weight: 700;
+    color: #1a1a1a;
+    margin-bottom: 8px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid #e0e0e0;
+  }
+  
+  /* ✅ Subtítulos (seções) */
+  .ex-output h2,
+  .ex-output h3 {
+    font-size: 16px;
+    font-weight: 600;
+    color: #2c3e50;
+    margin-top: 32px;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #e0e0e0;
+  }
+  
+  /* ✅ Parágrafos - espaçamento organizado */
+  .ex-output p {
+    font-size: 14px;
+    line-height: 1.6;
+    margin-bottom: 12px;
+    color: #333;
+  }
+  
+  /* ✅ Listas ordenadas (questões numeradas) */
+  .ex-output ol {
+    margin: 16px 0;
+    padding-left: 24px;
+  }
+  
+  .ex-output ol li {
+    font-size: 14px;
+    line-height: 1.7;
+    margin-bottom: 16px;
+    padding-left: 8px;
+    color: #1a1a1a;
+  }
+  
+  /* ✅ Listas não ordenadas (opções de múltipla escolha) */
+  .ex-output ul {
+    margin: 12px 0;
+    padding-left: 20px;
+  }
+  
+  .ex-output ul li {
+    font-size: 14px;
+    line-height: 1.7;
+    margin-bottom: 8px;
+    color: #555;
+  }
+  
+  /* ✅ Texto em negrito (para destacar termos) */
+  .ex-output strong {
+    font-weight: 600;
+    color: #1a1a1a;
+  }
+  
+  /* ✅ Texto em itálico */
+  .ex-output em {
+    font-style: italic;
+    color: #666;
+  }
+  
+  /* ✅ Seção de RESPOSTAS (oculta por padrão) */
+  .ex-output .answers {
+    margin-top: 40px;
+    padding: 20px;
+    background: #f8f9fa;
+    border-radius: 6px;
+    border-left: 4px solid #4caf50;
+  }
+  
+  .ex-output .answers::before {
+    content: "✓ Respostas";
+    display: block;
+    font-weight: 700;
+    font-size: 16px;
+    color: #2c3e50;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #4caf50;
+  }
+  
+  /* ✅ Código/blocos de código */
+  .ex-output code {
+    background: #f0f0f0;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 13px;
+    font-family: 'Courier New', monospace;
+  }
+  
+  .ex-output pre {
+    background: #f5f5f5;
+    padding: 12px;
+    border-radius: 6px;
+    border-left: 3px solid #2196f3;
+    overflow-x: auto;
+    font-size: 13px;
   }
   
   /* ensure node-slider content scrolls well */
@@ -4576,11 +4929,11 @@
   /* ✅ CORREÇÃO: Permitir scroll completo do conteúdo das tabs */
   .node-tabs-body .tab-content {
     min-height: fit-content !important; /* ✅ Evita corte de conteúdo */
-    padding-bottom: 40px !important; /* ✅ ✅ AUMENTADO: De 24px para 40px - mais espaço para leitura */
+    padding-bottom: 60px !important; /* ✅ ✅ ESPAÇO MÁXIMO: Muito mais espaço para leitura completa */
   }
   
   .tab-content-body {
-    padding-bottom: 48px !important; /* ✅ ✅ AUMENTADO: De 32px para 48px - ainda mais espaço */
+    padding-bottom: 80px !important; /* ✅ ✅ ESPAÇO MÁXIMO: Espaço extra máximo no final */
     min-height: fit-content !important; /* ✅ Ajusta altura ao conteúdo */
   }
   
@@ -4953,7 +5306,18 @@
 }
 
 .clear-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px; /* ✅ Aumentado de 16px para 20px */
+  height: 20px;
   font-size: 14px;
+}
+
+.clear-icon svg {
+  width: 100%;
+  height: 100%;
+  fill: #666; /* ✅ Cor original cinza do ícone de lixeira */
 }
 
 .clear-text {
@@ -5198,7 +5562,18 @@
 }
 
 .lapis-clear-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px; /* ✅ Aumentado de 14px para 18px */
+  height: 18px;
   font-size: 12px;
+}
+
+.lapis-clear-icon svg {
+  width: 100%;
+  height: 100%;
+  fill: #666; /* ✅ Cor original cinza do ícone de lixeira */
 }
 
 .lapis-clear-text {
@@ -5262,7 +5637,7 @@
 
 .coffee-icon {
   position: fixed;
-  bottom: 20px;
+  bottom: 62px; /* ✅ Ajustado: Footer (42px) + espaçamento (20px) */
   left: 20px;
   z-index: 1000;
   cursor: move;
@@ -5362,7 +5737,7 @@
 /* ✅ Responsividade */
 @media (max-width: 768px) {
   .coffee-icon {
-    bottom: 15px;
+    bottom: 71px; /* ✅ Ajustado: Footer mobile (56px) + espaçamento (15px) */
     left: 15px;
     padding: 6px 10px;
   }
@@ -5378,7 +5753,7 @@
 
 @media (max-width: 480px) {
   .coffee-icon {
-    bottom: 10px;
+    bottom: 66px; /* ✅ Ajustado: Footer mobile (56px) + espaçamento (10px) */
     left: 10px;
     padding: 5px 8px;
   }
@@ -5681,16 +6056,19 @@
   background: white;
   border-radius: 6px;
   overflow: hidden; /* Keep hidden to prevent overflow */
+  overflow-x: hidden !important; /* ✅ Prevenir scroll lateral */
 }
 
 .chat-messages {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden !important; /* ✅ Prevenir scroll lateral */
   padding: 10px;
   display: flex;
   flex-direction: column;
   gap: 8px;
   overflow-anchor: none; /* Prevent automatic scroll to bottom */
+  align-items: center; /* ✅ Centralizar mensagens */
   /* No max-height needed - container limits it */
 }
 
@@ -5716,6 +6094,10 @@
   border-radius: 6px;
   max-width: 75%;
   word-wrap: break-word;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  overflow-x: hidden !important; /* ✅ Prevenir scroll lateral */
+  text-align: center; /* ✅ Centralizar texto das respostas */
   font-size: 13px;
   line-height: 1.4;
 }
@@ -5899,7 +6281,10 @@
   border-radius: 4px;
   padding: 8px;
   margin: 8px 0;
-  overflow-x: auto;
+  overflow-x: hidden !important; /* ✅ Prevenir scroll lateral */
+  overflow-wrap: break-word;
+  word-break: break-all;
+  white-space: pre-wrap; /* ✅ Quebrar linhas longas */
   font-size: 0.85em;
 }
 

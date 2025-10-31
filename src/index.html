@@ -121,8 +121,12 @@
         <span id="statusText">Pronto para gerar mapas mentais</span>
       </div>
       <div class="status-actions">
-        <button id="saveMapBtn" class="status-btn" aria-label="Salvar mapa">💾</button>
-        <button id="deleteMapBtn" class="status-btn" aria-label="Apagar mapa">🗑️</button>
+        <button id="saveMapBtn" class="status-btn" aria-label="Salvar mapa" title="Salvar mapa atual no navegador">💾</button>
+        <button id="deleteMapBtn" class="status-btn" aria-label="Apagar mapa" title="Limpar mapa da tela (não apaga mapas salvos)">
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="width: 20px; height: 20px; fill: #666;">
+            <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+          </svg>
+        </button>
       </div>
     </footer>
   </div>
@@ -226,6 +230,7 @@
         <button class="tab-btn active" data-tab="ai">🤖 IA</button>
         <button class="tab-btn" data-tab="theme">🎨 Tema</button>
         <button class="tab-btn" data-tab="layout">📐 Layout</button>
+        <button class="tab-btn" data-tab="language">🌐 Idioma</button>
         <button class="tab-btn" data-tab="storage">💾 Cache</button>
         <button class="tab-btn" data-tab="chat">💬 Chat IA Tutor</button>
       </div>
@@ -248,7 +253,11 @@
         <label class="label">API Key</label>
               <div style="display: flex; gap: 8px;">
                 <input id="apiKeyInput" type="password" placeholder="Insira sua API Key" style="flex: 1;" />
-                <button id="deleteApiBtn" class="btn secondary" title="Excluir API Key">🗑️</button>
+                <button id="deleteApiBtn" class="btn secondary" title="Excluir API Key">
+                  <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="width: 20px; height: 20px; fill: #666; vertical-align: middle;">
+                    <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                  </svg>
+                </button>
               </div>
               <div style="display: flex; gap: 8px; margin-top: 8px;">
                 <button id="saveApiBtn" class="btn primary">Salvar API</button>
@@ -367,6 +376,32 @@
         </div>
       </div>
 
+      <!-- ✅ ABA IDIOMA: Seleção de idioma para produção de conteúdo -->
+      <div class="tab-content" data-tab-content="language">
+        <div class="settings-section">
+          <div class="card">
+            <div class="card-header">
+              <h4 class="section-title">🌐 Idioma de Produção</h4>
+            </div>
+            <div class="card-body">
+              <label class="label">Selecione o idioma que a IA deve usar para produzir todo o conteúdo</label>
+              <p class="hint">Todas as respostas da IA, mapas mentais, resumos e expansões serão gerados exclusivamente no idioma selecionado.</p>
+              <select id="languageSelect" style="margin-top: 12px; width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px;">
+                <option value="pt">🇧🇷 Português</option>
+                <option value="en">🇺🇸 Inglês</option>
+                <option value="es">🇪🇸 Espanhol</option>
+                <option value="fr">🇫🇷 Francês</option>
+                <option value="de">🇩🇪 Alemão</option>
+                <option value="it">🇮🇹 Italiano</option>
+                <option value="zh">🇨🇳 Chinês</option>
+              </select>
+              <button id="saveLanguageBtn" class="btn primary" style="margin-top: 12px; width: 100%;">💾 Salvar Idioma</button>
+              <p id="languageStatus" class="hint" style="margin-top: 8px;"></p>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- ✅ ABA CACHE: Organizada e espaçada -->
       <div class="tab-content" data-tab-content="storage">
         <div class="settings-section">
@@ -389,7 +424,12 @@
               </div>
             </div>
             <div class="card-actions">
-              <button id="clearAllSummariesBtn" class="btn secondary">🗑️ Limpar Todo Cache</button>
+              <button id="clearAllSummariesBtn" class="btn secondary">
+                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="width: 18px; height: 18px; fill: #666; vertical-align: middle; margin-right: 6px;">
+                  <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                </svg>
+                Limpar Todo Cache
+              </button>
               <button id="refreshCacheStatsBtn" class="btn ghost">🔄 Atualizar</button>
             </div>
           </div>

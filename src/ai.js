@@ -41,8 +41,22 @@ window.AI.fetchModels = async function(provider, apiKey) {
   return models.filter(m=>typeof m.id==='string');
 };
 
-window.AI.chatMindMap = async function({ provider, apiKey, model, message }) {
+window.AI.chatMindMap = async function({ provider, apiKey, model, message, language = 'pt' }) {
   const ep = ENDPOINTS[provider];
+  
+  // Obter instrução de idioma
+  const languageMap = {
+    'pt': 'Português',
+    'en': 'English',
+    'es': 'Español',
+    'fr': 'Français',
+    'de': 'Deutsch',
+    'it': 'Italiano',
+    'zh': '中文'
+  };
+  const languageName = languageMap[language] || languageMap['pt'];
+  const languageInstruction = `IMPORTANTE: Você DEVE produzir TODO o conteúdo EXCLUSIVAMENTE em ${languageName}. Todos os textos, títulos, descrições, explicações e respostas devem estar em ${languageName}. Não use nenhum outro idioma.`;
+  
   const body = {
     model,
     messages: [
@@ -53,7 +67,8 @@ window.AI.chatMindMap = async function({ provider, apiKey, model, message }) {
           '{"title":"<título>","nodes":[{"id":"root","label":"<assunto>","children":[{"id":"n1","label":"<tópico>","children":[...]}, ...]}]}} ' +
           'IMPORTANTE: Adicione numeração sequencial aos labels para indicar ordem de leitura. ' +
           'Use formato "1 - Tópico", "2 - Tópico", etc. para nós principais e "1.1 - Subtópico", "1.2 - Subtópico", etc. para sub-tópicos. ' +
-          'Evite texto fora do JSON. Crie estrutura clara com 3-6 tópicos principais e sub-tópicos concisos.'
+          'Evite texto fora do JSON. Crie estrutura clara com 3-6 tópicos principais e sub-tópicos concisos. ' +
+          languageInstruction
       },
       { role: 'user', content: message }
     ],
@@ -84,13 +99,27 @@ window.AI.chatMindMap = async function({ provider, apiKey, model, message }) {
   return normalizeMap(json);
 };
 
-window.AI.chatPlain = async function({ provider, apiKey, model, message, temperature = 0.2 }) {
+window.AI.chatPlain = async function({ provider, apiKey, model, message, temperature = 0.2, language = 'pt' }) {
   const ep = ENDPOINTS[provider];
   if (!ep) throw new Error('Provedor inválido.');
+  
+  // Obter instrução de idioma
+  const languageMap = {
+    'pt': 'Português',
+    'en': 'English',
+    'es': 'Español',
+    'fr': 'Français',
+    'de': 'Deutsch',
+    'it': 'Italiano',
+    'zh': '中文'
+  };
+  const languageName = languageMap[language] || languageMap['pt'];
+  const languageInstruction = `IMPORTANTE: Você DEVE produzir TODO o conteúdo EXCLUSIVAMENTE em ${languageName}. Todos os textos, títulos, descrições, explicações e respostas devem estar em ${languageName}. Não use nenhum outro idioma.`;
+  
   const body = {
     model,
     messages: [
-      { role: 'system', content: 'Você é um assistente conciso. Responda de forma clara e direta, sem JSON, apenas texto.' },
+      { role: 'system', content: `Você é um assistente conciso. Responda de forma clara e direta, sem JSON, apenas texto. ${languageInstruction}` },
       { role: 'user', content: message }
     ],
     temperature

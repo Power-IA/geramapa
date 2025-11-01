@@ -246,6 +246,18 @@ function applyMainDirectoryRules(cy, mapJson, preserveViewport = false) {
   return rootNode;
 }
 
+// ✅ FUNÇÃO HELPER: Aplicar fit e limitar zoom máximo a 60%
+function applyFitWithMaxZoom(cy, padding = 40) {
+  cy.fit(undefined, padding);
+  // ✅ Limitar zoom máximo a 60% (0.6) após fit
+  const currentZoom = cy.zoom();
+  const MAX_INITIAL_ZOOM = 0.6; // 60%
+  if (currentZoom > MAX_INITIAL_ZOOM) {
+    cy.zoom(MAX_INITIAL_ZOOM);
+    console.log(`🔍 Zoom limitado de ${(currentZoom * 100).toFixed(0)}% para ${(MAX_INITIAL_ZOOM * 100).toFixed(0)}%`);
+  }
+}
+
 // Ajuste de zoom quando existe apenas um nó visível
 function applySingleNodeZoom(cy) {
   try {
@@ -359,7 +371,7 @@ window.MapEngine.renderMindMap = function(cy, mapJson, layoutModel = 'default', 
     });
     
     if (!preserveViewport) {
-      cy.fit(undefined, 40);
+      applyFitWithMaxZoom(cy, 40); // ✅ Usar função helper que limita zoom
       applySingleNodeZoom(cy);
     }
     return;
@@ -401,7 +413,7 @@ window.MapEngine.renderMindMap = function(cy, mapJson, layoutModel = 'default', 
     });
     // ensure fit focusing view to include right expansion but keep root visible on left
     if (!preserveViewport) {
-      cy.fit(undefined, 40);
+      applyFitWithMaxZoom(cy, 40); // ✅ Usar função helper que limita zoom
       applySingleNodeZoom(cy);
     }
     return;
@@ -431,7 +443,7 @@ window.MapEngine.renderMindMap = function(cy, mapJson, layoutModel = 'default', 
       console.log('🎯 Diretório principal reposicionado no centro após layout');
     }
     
-    cy.fit(undefined, 40);
+    applyFitWithMaxZoom(cy, 40); // ✅ Usar função helper que limita zoom
     enableCenteredZoom(cy);
     applySingleNodeZoom(cy);
     // post-layout: apply collision resolution and smart edge routing

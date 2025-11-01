@@ -102,6 +102,9 @@ const state = {
   currentModel: 'default'
 };
 
+// ✅ CONSTANTE: Zoom máximo inicial para todos os mapas (60%)
+const MAX_INITIAL_ZOOM = 0.6;
+
 // Expose state globally for debugging and testing with extension safety
 if (typeof window !== 'undefined' && !window.state) {
   window.state = state;
@@ -2046,14 +2049,30 @@ if (specialistChat) {
 }
 
 saveMapBtn.addEventListener('click', () => {
-  if (!state.currentMap) return;
-  const title = (saveTitleInput.value || state.currentMap.title || 'Mapa sem título').trim();
-  const id = window.Storage.GeraMapas.saveMap({ title, data: state.currentMap });
-  saveTitleInput.value = '';
-  loadSavedList();
-  state.currentMapId = id;
-  // update visual state
-  deleteMapBtn.disabled = false;
+  if (!savedMapsPopup) return;
+  
+  // ✅ TOGGLE: Verificar ANTES de togglePopup (pois closeAllPopups() remove 'show')
+  const isOpen = savedMapsPopup.classList.contains('show');
+  
+  if (isOpen) {
+    // Se popup estiver aberto, apenas fechar
+    closeAllPopups();
+    return;
+  }
+  
+  // ✅ Se popup estiver fechado, salvar (se houver mapa) E abrir
+  if (state.currentMap) {
+    const title = (saveTitleInput.value || state.currentMap.title || 'Mapa sem título').trim();
+    const id = window.Storage.GeraMapas.saveMap({ title, data: state.currentMap });
+    saveTitleInput.value = '';
+    loadSavedList();
+    state.currentMapId = id;
+    // update visual state
+    deleteMapBtn.disabled = false;
+  }
+  
+  // Abrir popup (togglePopup fecha outros e abre este)
+  togglePopup(savedMapsPopup);
 });
 
 deleteMapBtn.addEventListener('click', () => {
@@ -2243,11 +2262,33 @@ async function renderAndAttach(map, preserveViewport = false) {
     console.log('💾 Estado completo salvo:', Object.keys(savedState.nodePositions).length, 'nós');
   }
   
+  // ✅ Salvar zoom atual antes de renderizar (para preservar se preserveViewport = true)
+  const zoomBeforeRender = state.cy ? state.cy.zoom() : MAX_INITIAL_ZOOM;
+  const zoomToRestore = preserveViewport ? zoomBeforeRender : (map._initialZoom || MAX_INITIAL_ZOOM);
+  
   // Renderizar mapa SEM aplicar layout quando preservando viewport
   window.MapEngine.renderMindMap(state.cy, map, state.currentModel, preserveViewport);
   
   // ✅ CORREÇÃO: Atualizar estado do menu mobile
   updateMobileMenuState();
+  
+  // ✅ Se não está preservando viewport, garantir zoom máximo de 60% após renderizar
+  if (!preserveViewport && state.cy) {
+    const cyZoom = state.cy.zoom();
+    if (cyZoom > MAX_INITIAL_ZOOM) {
+      state.cy.zoom(MAX_INITIAL_ZOOM);
+      console.log(`🔍 Zoom ajustado para máximo de ${(MAX_INITIAL_ZOOM * 100).toFixed(0)}%`);
+    }
+    // ✅ Sincronizar variável global currentZoom
+    currentZoom = state.cy.zoom();
+    updateZoomDisplay();
+    // Salvar zoom inicial no mapa
+    if (!map._initialZoom) {
+      map._initialZoom = MAX_INITIAL_ZOOM;
+    }
+    // Salvar zoom atual também
+    map._currentZoom = currentZoom;
+  }
   
   // ✅ RESTAURAR ESTADO VISUAL SALVO (se existir)
   if (hasVisualState && state.cy) {
@@ -2275,10 +2316,16 @@ async function renderAndAttach(map, preserveViewport = false) {
       });
     }
     
-    // Restaurar viewport salvo
+    // Restaurar viewport salvo (mas limitar zoom máximo a 60% se necessário)
     if (map._visualState.viewport) {
+      let savedZoom = map._visualState.viewport.zoom;
+      // ✅ Limitar zoom restaurado a máximo de 60%
+      if (savedZoom > MAX_INITIAL_ZOOM) {
+        savedZoom = MAX_INITIAL_ZOOM;
+        console.log(`🔍 Zoom restaurado limitado a ${(MAX_INITIAL_ZOOM * 100).toFixed(0)}%`);
+      }
       state.cy.viewport({
-        zoom: map._visualState.viewport.zoom,
+        zoom: savedZoom,
         pan: map._visualState.viewport.pan
       });
     }
@@ -2295,13 +2342,28 @@ async function renderAndAttach(map, preserveViewport = false) {
       }
     });
     
-    // Restaurar viewport
+    // Restaurar viewport (preservando zoom quando preserveViewport = true)
+    let restoreZoom = savedState.viewport.zoom;
+    // ✅ Se não está preservando viewport, limitar a 60%
+    if (!preserveViewport && restoreZoom > MAX_INITIAL_ZOOM) {
+      restoreZoom = MAX_INITIAL_ZOOM;
+    }
     state.cy.viewport({
-      zoom: savedState.viewport.zoom,
+      zoom: restoreZoom,
       pan: savedState.viewport.pan
     });
     
+    // ✅ Sincronizar variável global currentZoom
+    currentZoom = restoreZoom;
+    updateZoomDisplay();
+    
     console.log('🔄 Estado restaurado - viewport + posições dos nós');
+  }
+  
+  // ✅ Sempre sincronizar currentZoom após renderizar (caso não tenha sido sincronizado acima)
+  if (state.cy && preserveViewport) {
+    currentZoom = state.cy.zoom();
+    updateZoomDisplay();
   }
   
   buildNodeInfoIcons(map);
@@ -2442,11 +2504,14 @@ window.addEventListener('keydown', (e) => {
 function togglePopup(popup) {
   if (!popup) return;
   
+  // ✅ IMPORTANTE: Verificar estado ANTES de closeAllPopups()
+  const wasOpen = popup.classList.contains('show');
+  
   // Fechar todos os outros popups primeiro
   closeAllPopups();
   
   // Toggle do popup atual
-  if (popup.classList.contains('show')) {
+  if (wasOpen) {
     popup.classList.remove('show');
   } else {
     popup.classList.add('show');
@@ -2742,14 +2807,42 @@ function applyModel(model) {
     return;
   }
   
+  // ✅ CRÍTICO: Salvar zoom ATUAL antes de mudar modelo
+  const currentZoom = state.cy.zoom();
+  const currentPan = state.cy.pan();
+  
+  console.log(`🔄 Mudando modelo de "${state.currentModel}" para "${model}" - Zoom atual: ${(currentZoom * 100).toFixed(0)}%`);
+  
+  // Salvar zoom no mapa se ainda não foi salvo
+  if (!state.currentMap._currentZoom) {
+    state.currentMap._currentZoom = currentZoom;
+  } else {
+    // Atualizar zoom atual (usuário pode ter ajustado manualmente)
+    state.currentMap._currentZoom = currentZoom;
+  }
+  
   state.currentModel = model;
   updateStatus(`Aplicando modelo: ${model}`);
   
-  // Re-renderizar mapa com novo modelo
-  window.MapEngine.renderMindMap(state.cy, state.currentMap, model);
+  // ✅ Re-renderizar mapa com novo modelo PRESERVANDO viewport
+  window.MapEngine.renderMindMap(state.cy, state.currentMap, model, true);
+  
+  // ✅ CRÍTICO: Restaurar zoom exato que estava antes
+  // Verificar se o zoom foi alterado durante renderização
+  const zoomAfterRender = state.cy.zoom();
+  if (Math.abs(zoomAfterRender - currentZoom) > 0.001) {
+    state.cy.zoom(currentZoom);
+    state.cy.pan(currentPan);
+    console.log(`✅ Zoom restaurado para ${(currentZoom * 100).toFixed(0)}% após mudança de modelo`);
+  }
+  
+  // ✅ Sincronizar variável local currentZoom (escopo global da função)
+  // Nota: currentZoom é uma variável global do módulo, já está no escopo correto
+  updateZoomDisplay();
+  
   updateMapInfoPopup();
   
-  updateStatus(`Modelo ${model} aplicado com sucesso`);
+  updateStatus(`Modelo ${model} aplicado com sucesso - Zoom mantido: ${(currentZoom * 100).toFixed(0)}%`);
 }
 
 // Eventos para tabs de configurações
@@ -3720,6 +3813,27 @@ async function showTooltipForNode(node, anchorEl, mapJson) {
           });
         });
 
+        // ✅ FUNÇÃO: Atualizar estado do botão de download baseado na aba ativa
+        function updateDownloadButtonState(activeTabName) {
+          const downloadBtn = nodeSlider.querySelector('#downloadTabBtn');
+          if (!downloadBtn) return;
+          
+          if (activeTabName === 'exercicio') {
+            downloadBtn.style.opacity = '0.5';
+            downloadBtn.style.cursor = 'not-allowed';
+            downloadBtn.title = 'Download não disponível para a aba de Exercícios';
+            downloadBtn.disabled = true;
+          } else {
+            downloadBtn.style.opacity = '1';
+            downloadBtn.style.cursor = 'pointer';
+            downloadBtn.title = 'Download conteúdo da aba ativa';
+            downloadBtn.disabled = false;
+          }
+        }
+        
+        // ✅ Atualizar estado inicial do botão de download
+        updateDownloadButtonState('normal');
+        
         // tab switching logic
         const header = nodeSlider.querySelector('.node-tabs-header');
         header.addEventListener('click', async (ev) => {
@@ -3728,6 +3842,13 @@ async function showTooltipForNode(node, anchorEl, mapJson) {
             ev.preventDefault();
             ev.stopPropagation();
             ev.stopImmediatePropagation();
+            
+            // Verificar se está desabilitado (aba exercício)
+            if (ev.target.disabled) {
+              alert('⚠️ Download não disponível para a aba de Exercícios. Use o botão "📄 PDF" dentro da própria aba para salvar os exercícios.');
+              return false;
+            }
+            
             downloadActiveTabContent(nodeSlider, nodeLabel);
             return false;
           }
@@ -3736,6 +3857,9 @@ async function showTooltipForNode(node, anchorEl, mapJson) {
           const btn = ev.target.closest('button[data-tab]');
           if (!btn) return;
           const tab = btn.dataset.tab;
+          
+          // ✅ Atualizar estado do botão de download quando muda de aba
+          updateDownloadButtonState(tab);
           // ui activation
           nodeSlider.querySelectorAll('.node-tabs-header .tab').forEach(b => b.classList.remove('active'));
           btn.classList.add('active');
@@ -6953,6 +7077,13 @@ const zoomPercent = document.getElementById('zoomPercent');
 let currentZoom = 1.0;
 
 function updateZoomDisplay() {
+  // ✅ Sincronizar com zoom real do Cytoscape
+  if (state.cy) {
+    const realZoom = state.cy.zoom();
+    if (Math.abs(currentZoom - realZoom) > 0.01) {
+      currentZoom = realZoom;
+    }
+  }
   const percent = Math.round(currentZoom * 100);
   zoomPercent.textContent = percent + '%';
   
@@ -6980,6 +7111,13 @@ function updateZoomDisplay() {
 // ✅ CORREÇÃO: Tornar performZoom global para uso unificado
 window.performZoom = function performZoom(factor, animate = true) {
   if (!state.cy) return;
+  
+  // ✅ Obter zoom atual do Cytoscape (mais confiável)
+  const cyCurrentZoom = state.cy.zoom();
+  // Sincronizar variável local com zoom real
+  if (Math.abs(currentZoom - cyCurrentZoom) > 0.01) {
+    currentZoom = cyCurrentZoom;
+  }
   
   const newZoom = Math.max(0.1, Math.min(3.0, currentZoom * factor));
   if (newZoom === currentZoom) return;
@@ -7028,6 +7166,12 @@ window.performZoom = function performZoom(factor, animate = true) {
         // ✅ Restaurar pan atual
         state.cy.pan(currentPan);
         
+        // ✅ Salvar zoom atual no mapa para preservar em mudanças de modelo
+        if (state.currentMap) {
+          state.currentMap._currentZoom = currentZoom;
+          console.log(`💾 Zoom salvo no mapa: ${(currentZoom * 100).toFixed(0)}%`);
+        }
+        
         // ✅ Reativar auto-organização se estava ativa
         if (wasAutoOrgActive) {
           window.LayoutAlgorithm.startAutoOrganization(state.cy, {
@@ -7041,6 +7185,8 @@ window.performZoom = function performZoom(factor, animate = true) {
           });
           console.log('🔓 Auto-organização reativada após zoom');
         }
+        
+        updateZoomDisplay();
       }
     });
   } else {
@@ -7063,6 +7209,12 @@ window.performZoom = function performZoom(factor, animate = true) {
     
     // ✅ Restaurar pan atual
     state.cy.pan(currentPan);
+    
+    // ✅ Salvar zoom atual no mapa para preservar em mudanças de modelo
+    if (state.currentMap) {
+      state.currentMap._currentZoom = currentZoom;
+      console.log(`💾 Zoom salvo no mapa: ${(currentZoom * 100).toFixed(0)}%`);
+    }
     
     // ✅ Reativar auto-organização se estava ativa
     if (wasAutoOrgActive) {
@@ -9042,10 +9194,382 @@ function simpleDownload(text, filename) {
   }
 }
 
-// ✅ FUNÇÃO DE DOWNLOAD DO CONTEÚDO DA ABA ATIVA (RECONSTRUÍDA)
+// ✅ FUNÇÃO: Criar página HTML formatada com suporte Markdown
+function createFormattedPage(htmlContent, title, nodeLabel, tabName) {
+  const tabNames = {
+    'normal': 'Normal',
+    'tecnico': 'Técnico',
+    'leigo': 'Leigo',
+    'palestra': 'Palestra',
+    'roteiro': 'Roteiro Curto',
+    'exercicio': 'Exercício',
+    'ia-tutor': 'IA Tutor'
+  };
+  
+  const tabDisplayName = tabNames[tabName] || tabName;
+  const pageTitle = `${nodeLabel} - ${tabDisplayName}`;
+  const dateStr = new Date().toLocaleString('pt-BR');
+  
+  // Extrair markdown original se possível (para download)
+  const tempDiv = document.createElement('div');
+  tempDiv.innerHTML = htmlContent;
+  const textContent = tempDiv.textContent || tempDiv.innerText || '';
+  
+  const htmlPage = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${escapeHtml(pageTitle)}</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      background: #f5f5f5;
+      padding: 20px;
+    }
+    
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+      overflow: hidden;
+    }
+    
+    header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 30px;
+      border-bottom: 3px solid rgba(255,255,255,0.2);
+    }
+    
+    header h1 {
+      font-size: 24px;
+      margin-bottom: 12px;
+      font-weight: 700;
+    }
+    
+    header .meta {
+      font-size: 14px;
+      opacity: 0.9;
+      margin: 4px 0;
+    }
+    
+    .download-section {
+      margin-top: 20px;
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    
+    .download-btn {
+      background: rgba(255,255,255,0.2);
+      color: white;
+      border: 2px solid rgba(255,255,255,0.3);
+      padding: 10px 20px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+      transition: all 0.3s ease;
+      text-decoration: none;
+      display: inline-block;
+    }
+    
+    .download-btn:hover {
+      background: rgba(255,255,255,0.3);
+      border-color: rgba(255,255,255,0.5);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    }
+    
+    main {
+      padding: 40px;
+    }
+    
+    /* Estilos para Markdown */
+    main h1 {
+      font-size: 32px;
+      margin: 24px 0 16px;
+      color: #2c3e50;
+      border-bottom: 3px solid #667eea;
+      padding-bottom: 8px;
+    }
+    
+    main h2 {
+      font-size: 26px;
+      margin: 20px 0 12px;
+      color: #34495e;
+      border-bottom: 2px solid #e0e0e0;
+      padding-bottom: 6px;
+    }
+    
+    main h3 {
+      font-size: 20px;
+      margin: 16px 0 10px;
+      color: #555;
+    }
+    
+    main h4, main h5, main h6 {
+      font-size: 16px;
+      margin: 12px 0 8px;
+      color: #666;
+    }
+    
+    main p {
+      margin: 12px 0;
+      text-align: justify;
+      line-height: 1.8;
+    }
+    
+    main ul, main ol {
+      margin: 12px 0;
+      padding-left: 30px;
+    }
+    
+    main li {
+      margin: 6px 0;
+      line-height: 1.6;
+    }
+    
+    main code {
+      background: #f4f4f4;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: 'Courier New', monospace;
+      font-size: 0.9em;
+      color: #e83e8c;
+    }
+    
+    main pre {
+      background: #2d2d2d;
+      color: #f8f8f2;
+      padding: 16px;
+      border-radius: 8px;
+      overflow-x: auto;
+      margin: 16px 0;
+      font-family: 'Courier New', monospace;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    
+    main pre code {
+      background: transparent;
+      padding: 0;
+      color: inherit;
+    }
+    
+    main blockquote {
+      border-left: 4px solid #667eea;
+      padding-left: 20px;
+      margin: 16px 0;
+      color: #555;
+      font-style: italic;
+      background: #f9f9f9;
+      padding: 12px 20px;
+      border-radius: 4px;
+    }
+    
+    main table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    
+    main th, main td {
+      border: 1px solid #ddd;
+      padding: 12px;
+      text-align: left;
+    }
+    
+    main th {
+      background: #667eea;
+      color: white;
+      font-weight: 600;
+    }
+    
+    main tr:nth-child(even) {
+      background: #f9f9f9;
+    }
+    
+    main a {
+      color: #667eea;
+      text-decoration: none;
+      border-bottom: 1px solid transparent;
+      transition: border-color 0.3s;
+    }
+    
+    main a:hover {
+      border-bottom-color: #667eea;
+    }
+    
+    main img {
+      max-width: 100%;
+      height: auto;
+      border-radius: 8px;
+      margin: 16px 0;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    
+    main strong {
+      font-weight: 700;
+      color: #2c3e50;
+    }
+    
+    main em {
+      font-style: italic;
+      color: #555;
+    }
+    
+    main hr {
+      border: none;
+      border-top: 2px solid #e0e0e0;
+      margin: 24px 0;
+    }
+    
+    @media print {
+      body {
+        background: white;
+        padding: 0;
+      }
+      
+      .container {
+        box-shadow: none;
+        border-radius: 0;
+      }
+      
+      .download-section {
+        display: none;
+      }
+    }
+    
+    @media (max-width: 768px) {
+      body {
+        padding: 10px;
+      }
+      
+      header {
+        padding: 20px;
+      }
+      
+      header h1 {
+        font-size: 20px;
+      }
+      
+      main {
+        padding: 20px;
+      }
+      
+      main h1 {
+        font-size: 24px;
+      }
+      
+      main h2 {
+        font-size: 20px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>${escapeHtml(nodeLabel)}</h1>
+      <div class="meta">
+        <div>Aba: <strong>${escapeHtml(tabDisplayName)}</strong></div>
+        <div>Data: ${escapeHtml(dateStr)}</div>
+      </div>
+      <div class="download-section">
+        <button class="download-btn" onclick="downloadAsMarkdown()">📥 Download Markdown</button>
+        <button class="download-btn" onclick="downloadAsHTML()">📄 Download HTML</button>
+        <button class="download-btn" onclick="window.print()">🖨️ Imprimir</button>
+      </div>
+    </header>
+    <main>
+      ${htmlContent}
+    </main>
+  </div>
+  
+  <script>
+    const contentText = ${JSON.stringify(textContent)};
+    const contentHTML = ${JSON.stringify(htmlContent)};
+    const nodeLabel = ${JSON.stringify(nodeLabel)};
+    const tabName = ${JSON.stringify(tabName)};
+    
+    function downloadFile(content, filename, mimeType) {
+      const blob = new Blob([content], { type: mimeType });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    }
+    
+    function downloadAsMarkdown() {
+      // Converter HTML para Markdown básico (simplificado)
+      let md = contentText;
+      const filename = nodeLabel.replace(/[^a-zA-Z0-9]/g, '_') + '_' + tabName + '.md';
+      downloadFile(md, filename, 'text/markdown;charset=utf-8');
+    }
+    
+    function downloadAsHTML() {
+      const htmlDoc = \`<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>\${nodeLabel} - \${tabName}</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 900px; margin: 0 auto; padding: 20px; line-height: 1.6; }
+    h1 { border-bottom: 3px solid #667eea; padding-bottom: 8px; }
+    h2 { border-bottom: 2px solid #e0e0e0; padding-bottom: 6px; }
+    code { background: #f4f4f4; padding: 2px 6px; border-radius: 4px; }
+    pre { background: #2d2d2d; color: #f8f8f2; padding: 16px; border-radius: 8px; overflow-x: auto; }
+    blockquote { border-left: 4px solid #667eea; padding-left: 20px; margin: 16px 0; font-style: italic; }
+    table { width: 100%; border-collapse: collapse; margin: 16px 0; }
+    th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+    th { background: #667eea; color: white; }
+  </style>
+</head>
+<body>
+  <h1>\${nodeLabel}</h1>
+  <p><strong>Aba:</strong> \${tabName} | <strong>Data:</strong> ${escapeHtml(dateStr)}</p>
+  <hr>
+  \${contentHTML}
+</body>
+</html>\`;
+      const filename = nodeLabel.replace(/[^a-zA-Z0-9]/g, '_') + '_' + tabName + '.html';
+      downloadFile(htmlDoc, filename, 'text/html;charset=utf-8');
+    }
+  </script>
+</body>
+</html>`;
+  
+  return htmlPage;
+}
+
+// ✅ FUNÇÃO: Escapar HTML para segurança
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+// ✅ FUNÇÃO DE DOWNLOAD DO CONTEÚDO DA ABA ATIVA (MODIFICADA PARA PÁGINA FORMATADA)
 function downloadActiveTabContent(nodeSlider, nodeLabel) {
   try {
-    console.log('🔄 Iniciando download...');
+    console.log('🔄 Gerando página formatada...');
     
     // 1. Verificar se há aba ativa
     const activeTab = nodeSlider.querySelector('.tab-content.active');
@@ -9058,40 +9582,88 @@ function downloadActiveTabContent(nodeSlider, nodeLabel) {
     const activeTabButton = nodeSlider.querySelector('.tab.active[data-tab]');
     const tabName = activeTabButton ? activeTabButton.dataset.tab : 'conteudo';
     
-    // 3. Extrair conteúdo da aba
-    let content = activeTab.textContent || activeTab.innerText || '';
-    
-    // Se não há texto, tentar extrair do HTML
-    if (!content || content.trim().length < 5) {
-      const tempDiv = document.createElement('div');
-      tempDiv.innerHTML = activeTab.innerHTML;
-      tempDiv.querySelectorAll('button, input, select, .btn').forEach(el => el.remove());
-      content = tempDiv.textContent || tempDiv.innerText || '';
+    // ✅ EXCLUSÃO: Download não disponível para aba de exercícios
+    if (tabName === 'exercicio') {
+      alert('⚠️ Download não disponível para a aba de Exercícios. Use o botão "📄 PDF" dentro da própria aba para salvar os exercícios.');
+      return;
     }
     
-    // Se ainda não há conteúdo, usar HTML limpo
-    if (!content || content.trim().length < 5) {
-      content = activeTab.innerHTML.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+    // 3. Extrair HTML formatado do conteúdo da aba
+    // ✅ Para diferentes abas, buscar conteúdo em estruturas diferentes
+    let tabContentBody = null;
+    
+    if (tabName === 'ia-tutor') {
+      // IA Tutor tem estrutura diferente - buscar chat messages
+      const chatMessages = activeTab.querySelector('#iaChatMessages');
+      if (chatMessages && chatMessages.innerHTML.trim().length > 10) {
+        tabContentBody = chatMessages; // Usar mensagens do chat como conteúdo
+      } else {
+        tabContentBody = activeTab.querySelector('.ia-tutor-container');
+      }
+    } else if (tabName === 'roteiro') {
+      // Roteiro pode ter conteúdo direto ou dentro de script-output
+      const scriptOutput = activeTab.querySelector('.script-output');
+      if (scriptOutput && scriptOutput.innerHTML.trim().length > 10) {
+        tabContentBody = scriptOutput;
+      } else {
+        tabContentBody = activeTab.querySelector('.tab-content-body') || activeTab;
+      }
+    } else {
+      // Para outras abas (normal, tecnico, leigo, palestra), usar tab-content-body
+      tabContentBody = activeTab.querySelector('.tab-content-body');
     }
     
-    // 4. Criar conteúdo do arquivo
-    const header = `=== CONTEÚDO DA ABA: ${tabName.toUpperCase()} ===\n`;
-    const nodeInfo = `Nó: ${nodeLabel}\n`;
-    const dateInfo = `Data: ${new Date().toLocaleString('pt-BR')}\n`;
-    const separator = '='.repeat(50) + '\n\n';
+    if (!tabContentBody || tabContentBody.innerHTML.trim().length < 10) {
+      // Tentar pegar todo o conteúdo da aba como fallback
+      tabContentBody = activeTab;
+    }
     
-    const fullContent = header + nodeInfo + dateInfo + separator + content;
+    // Criar cópia do conteúdo removendo botões e controles
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = tabContentBody.innerHTML;
     
-    // 5. Criar nome do arquivo
-    const filename = `${nodeLabel.replace(/[^a-zA-Z0-9]/g, '_')}_${tabName}.txt`;
+    // Remover elementos de controle (comum a todas as abas)
+    tempDiv.querySelectorAll('button, input, select, .btn, .tab-content-header, .ex-base, .ex-type, .ex-qtd-disc, .ex-qtd-mult, .ex-opts, .ex-generate, .ex-toggle-answers, .ex-save-pdf').forEach(el => el.remove());
     
-    // 6. Fazer download usando função simples (APENAS PARA ABAS)
-    simpleDownload(fullContent, filename);
-      console.log('✅ Download das abas concluído com sucesso!');
+    // ✅ Remover controles específicos da aba ia-tutor
+    if (tabName === 'ia-tutor') {
+      tempDiv.querySelectorAll('.ia-tutor-suggestions, .ia-suggestions-header, .ia-suggestions-list, .chat-input-container, .chat-input, .chat-send-btn, #iaSendBtn, #iaChatInput').forEach(el => el.remove());
+    }
+    
+    // Remover elementos de placeholder (mensagens "Carregue a aba...")
+    tempDiv.querySelectorAll('em').forEach(el => {
+      const text = el.textContent || '';
+      if (text.includes('Carregue a aba') || text.includes('Carregue') || text.trim().length < 5) {
+        el.remove();
+      }
+    });
+    
+    const formattedHtml = tempDiv.innerHTML;
+    
+    // Verificar se há conteúdo válido
+    if (!formattedHtml || formattedHtml.trim().length < 10) {
+      alert('❌ A aba não possui conteúdo para exibir. Gere o conteúdo primeiro.');
+      return;
+    }
+    
+    // 4. Criar página HTML formatada
+    const pageHtml = createFormattedPage(formattedHtml, nodeLabel, nodeLabel, tabName);
+    
+    // 5. Abrir página em nova aba
+    const newWindow = window.open('', '_blank');
+    if (!newWindow) {
+      alert('❌ Por favor, permita pop-ups para abrir a página formatada.');
+      return;
+    }
+    
+    newWindow.document.write(pageHtml);
+    newWindow.document.close();
+    
+    console.log('✅ Página formatada aberta com sucesso!');
     
   } catch (error) {
     console.error('❌ Erro na função de download:', error);
-    alert('❌ Erro ao fazer download: ' + error.message);
+    alert('❌ Erro ao gerar página formatada: ' + error.message);
   }
 }
 // ☕ FUNCIONALIDADE DO ÍCONE "PAGUE UM CAFÉ" DESLOCÁVEL

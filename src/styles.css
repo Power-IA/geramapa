@@ -479,9 +479,17 @@
   
   /* Popup Content */
   .popup-content {
+    display: flex;
+    flex-direction: column;
     flex: 1;
     overflow-y: auto;
     padding: 16px;
+    min-height: 0;
+  }
+  
+  /* ✅ Configurações - popup-content específico */
+  #settingsPopup .popup-content {
+    gap: 0;
   }
   
   /* ========================================
@@ -1118,7 +1126,7 @@
     background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
     border: 2px solid #28a745;
     box-shadow: 0 12px 40px rgba(40, 167, 69, 0.15);
-    z-index: 200; /* ✅ Acima do zoom (150) - mesmo nível dos outros chats */
+    z-index: 200; /* ✅ Acima do zoom (50) e modelos (100) - mesmo nível dos outros chats */
   }
   
   .specialist-chat .floating-chat-header {
@@ -1537,17 +1545,38 @@
     background: #f8f9fa;
   }
   
-  /* ✅ NOVOS ESTILOS: Melhor UX e organização - COMPACTO */
+  /* ✅ MELHORADO: Layout Flexbox robusto para Configurações */
   .settings-section {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 16px;
+    width: 100%;
+  }
+  
+  /* ✅ Cards com flexbox melhorado */
+  .settings-section .card {
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--border, #e6e6e6);
+    border-radius: 8px;
+    background: var(--bg, #fff);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    overflow: hidden;
+    transition: box-shadow 0.2s ease;
+  }
+  
+  .settings-section .card:hover {
+    box-shadow: 0 4px 8px rgba(0,0,0,0.08);
   }
   
   .card-header {
+    display: flex;
+    align-items: center;
     border-bottom: 1px solid var(--border, #e6e6e6);
-    padding-bottom: 6px;
-    margin-bottom: 8px;
+    padding: 12px 16px;
+    margin: 0;
+    background: #f8f9fa;
+    flex-shrink: 0;
   }
   
   .section-title {
@@ -1555,111 +1584,208 @@
     font-weight: 600;
     color: var(--text, #111);
     margin: 0;
+    flex: 1;
   }
   
   .card-body {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 12px;
+    padding: 16px;
+    flex: 1;
   }
   
   .card-body:not(:last-child) {
-    margin-bottom: 12px;
+    border-bottom: 1px solid var(--border, #e9ecef);
+    padding-bottom: 16px;
+    margin-bottom: 0;
   }
   
+  /* ✅ Form rows com flexbox melhorado */
   .form-row {
     display: flex;
-    gap: 8px;
+    gap: 12px;
     flex-wrap: wrap;
+    align-items: flex-start;
+    width: 100%;
   }
   
   .form-col {
     flex: 1;
-    min-width: 120px;
+    min-width: 140px;
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 6px;
+    flex-basis: auto;
+  }
+  
+  .form-col:only-child {
+    flex: 1 1 100%;
   }
   
   .sub-label {
-    font-size: 0.8em;
+    font-size: 0.85em;
     color: var(--muted, #666);
     font-weight: 500;
+    margin-bottom: 2px;
   }
   
+  /* ✅ Color inputs com flexbox */
   .color-input {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 6px;
+    flex: 1;
   }
   
   .color-input label {
-    font-size: 0.75em;
+    font-size: 0.8em;
     color: var(--muted, #666);
     font-weight: 500;
+    margin: 0;
   }
   
   .color-input input[type="color"] {
     width: 100%;
-    height: 32px;
+    height: 40px;
     border: 1px solid var(--border, #ddd);
-    border-radius: 4px;
+    border-radius: 6px;
     cursor: pointer;
+    transition: border-color 0.2s ease;
+    flex-shrink: 0;
   }
   
+  .color-input input[type="color"]:hover {
+    border-color: var(--accent, #000);
+  }
+  
+  /* ✅ Theme grid com flexbox melhorado */
   .theme-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
-    gap: 8px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    width: 100%;
   }
   
+  .theme-grid .color-input {
+    flex: 1 1 calc(50% - 6px);
+    min-width: 120px;
+    max-width: 200px;
+  }
+  
+  /* ✅ Card actions com flexbox melhorado */
   .card-actions {
     display: flex;
-    gap: 6px;
-    padding: 8px;
+    gap: 8px;
+    padding: 12px 16px;
     border-top: 1px solid var(--border, #e6e6e6);
-    margin-top: 8px;
-    background: #f9f9f9;
-    border-radius: 0 0 6px 6px;
+    margin: 0;
+    background: #f8f9fa;
+    flex-shrink: 0;
+    justify-content: flex-end;
+    align-items: center;
     flex-wrap: wrap;
   }
   
-  /* Responsivo para mobile */
+  .card-actions .btn {
+    flex: 0 0 auto;
+    min-width: fit-content;
+  }
+  
+  /* ✅ Input groups com flexbox */
+  .card-body > div[style*="display: flex"] {
+    display: flex !important;
+    gap: 8px !important;
+    align-items: center;
+    width: 100%;
+  }
+  
+  .card-body > div[style*="display: flex"] > input {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  
+  .card-body > div[style*="display: flex"] > button {
+    flex: 0 0 auto;
+  }
+  
+  /* ✅ Responsivo mobile melhorado com flexbox */
   @media (max-width: 768px) {
+    .popup-content {
+      padding: 12px;
+      gap: 0;
+    }
+    
     .settings-section {
-      gap: 8px;
+      gap: 12px;
     }
     
     .card-header {
-      padding-bottom: 4px;
-      margin-bottom: 6px;
+      padding: 10px 12px;
+      flex-wrap: wrap;
     }
     
     .section-title {
       font-size: 13px;
     }
     
+    .card-body {
+      padding: 12px;
+      gap: 10px;
+    }
+    
     .form-row {
       flex-direction: column;
-      gap: 6px;
+      gap: 10px;
+      align-items: stretch;
     }
     
     .form-col {
       min-width: 100%;
+      flex: 1 1 100%;
     }
     
     .theme-grid {
-      grid-template-columns: repeat(2, 1fr);
-      gap: 6px;
+      flex-direction: column;
+      gap: 10px;
+    }
+    
+    .theme-grid .color-input {
+      flex: 1 1 100%;
+      max-width: 100%;
     }
     
     .card-actions {
       flex-direction: column;
-      gap: 4px;
+      gap: 8px;
+      padding: 10px 12px;
     }
     
     .card-actions .btn {
       width: 100%;
+      flex: 1 1 100%;
+    }
+    
+    .card-body > div[style*="display: flex"] {
+      flex-direction: column;
+      gap: 8px !important;
+    }
+    
+    .card-body > div[style*="display: flex"] > input,
+    .card-body > div[style*="display: flex"] > button {
+      width: 100%;
+    }
+  }
+  
+  /* ✅ Responsivo tablet */
+  @media (min-width: 769px) and (max-width: 1024px) {
+    .form-col {
+      min-width: 150px;
+      flex: 1 1 calc(50% - 12px);
+    }
+    
+    .theme-grid .color-input {
+      flex: 1 1 calc(50% - 6px);
     }
   }
   
@@ -2777,7 +2903,7 @@
     border: 1px solid var(--border);
     border-radius: 12px;
     box-shadow: 0 20px 60px rgba(0,0,0,0.2);
-    z-index: 160; /* ✅ Acima do zoom (150) e abaixo dos popups principais (200) */
+    z-index: 160; /* ✅ Acima do zoom (50) e modelos (100), abaixo dos popups principais (200) */
     display: none; /* Escondido por padrão */
     flex-direction: column;
     font-family: var(--font-family-main);
@@ -2898,12 +3024,11 @@
     z-index: 90 !important; /* Below header (100) but above content */
     position: fixed !important; /* Ensure it's positioned correctly */
   }
-  .node-slider-body { 
-    padding: 12px 12px 24px 12px; /* padding-bottom aumentado para melhor scroll */
-    overflow: auto; 
-    flex: 1; 
-  }
   .node-slider-content { 
+    display: flex; /* ✅ FLEX CONTAINER para .node-tabs */
+    flex-direction: column; /* ✅ Coluna vertical */
+    height: 100%; /* ✅ Ocupar toda altura do .node-slider-body */
+    min-height: 0; /* ✅ Essencial para flex funcionar com overflow */
     max-width: 470px; 
     margin: 0; 
     color: var(--text); 
@@ -2913,7 +3038,7 @@
     word-wrap: break-word;
     overflow-wrap: break-word;
     hyphens: auto;
-    padding-bottom: 12px; /* padding adicional no final do conteúdo */
+    padding-bottom: 0; /* ✅ Removido padding que estava interferindo */
     text-align: justify; /* Texto justificado para melhor organização */
     text-indent: 0; /* Sem indentação para melhor organização */
   }
@@ -3049,20 +3174,21 @@
     
     /* ✅ MOBILE: Garantir scroll completo dos textos nas tabs */
     .node-slider-body .node-tabs-body { 
-      max-height: calc(100vh - 180px) !important; /* ✅ Mais espaço no mobile */
-      overflow-y: auto !important; 
+      flex: 1 !important; /* ✅ Ocupar espaço disponível */
+      min-height: 0 !important; /* ✅ Essencial para flex com overflow */
+      overflow-y: auto !important; /* ✅ ÚNICO SCROLL - Todo conteúdo rola aqui */
       overflow-x: hidden; 
       padding-right: 6px; 
     }
     
     .node-tabs-body .tab-content {
       min-height: fit-content !important;
-      padding-bottom: 32px !important; /* ✅ ✅ AUMENTADO: De 20px para 32px - mais espaço no mobile */
+      padding-bottom: 20px !important; /* ✅ Consistente com desktop */
     }
     
     .tab-content-body {
-      padding-bottom: 100px !important; /* ✅ ✅ ESPAÇO MÁXIMO: Muito espaço no mobile para evitar corte */
-      min-height: fit-content !important;
+      padding-bottom: 40px !important; /* ✅ Consistente com desktop */
+      height: auto !important;
     }
     
     /* ✅ MOBILE: Garantir que exercícios não criem scroll duplo */
@@ -3157,20 +3283,21 @@
     
     /* ✅ MOBILE PEQUENO: Garantir scroll completo dos textos nas tabs */
     .node-slider-body .node-tabs-body { 
-      max-height: calc(100vh - 200px) !important; /* ✅ Ainda mais espaço em telas pequenas */
-      overflow-y: auto !important; 
+      flex: 1 !important; /* ✅ Ocupar espaço disponível */
+      min-height: 0 !important; /* ✅ Essencial para flex com overflow */
+      overflow-y: auto !important; /* ✅ ÚNICO SCROLL - Todo conteúdo rola aqui */
       overflow-x: hidden; 
       padding-right: 4px; 
     }
     
     .node-tabs-body .tab-content {
       min-height: fit-content !important;
-      padding-bottom: 28px !important; /* ✅ ✅ AUMENTADO: De 16px para 28px - mais espaço em telas pequenas */
+      padding-bottom: 20px !important; /* ✅ Consistente com desktop e mobile */
     }
     
     .tab-content-body {
-      padding-bottom: 90px !important; /* ✅ ✅ ESPAÇO MÁXIMO: Muito espaço em telas pequenas para evitar corte */
-      min-height: fit-content !important;
+      padding-bottom: 40px !important; /* ✅ Consistente com desktop e mobile */
+      height: auto !important;
     }
     
     /* ✅ MOBILE PEQUENO: Garantir que exercícios não criem scroll duplo */
@@ -4121,7 +4248,7 @@
     border-radius: 12px;
     padding: 16px;
     box-shadow: 0 8px 24px rgba(0,0,0,0.08);
-    z-index: 60;
+    z-index: 100; /* ✅ Acima do zoom (50) e abaixo dos chats/popups (200) */
     cursor: move;
     user-select: none;
     max-width: 300px;
@@ -4277,7 +4404,7 @@
     display: flex;
     flex-direction: column;
     gap: 3px; /* ✅ MINIMALISTA: Gap reduzido de 8px para 3px */
-    z-index: 150; /* ✅ Abaixo dos popups (200) e acima do mapa (0-100) */
+    z-index: 50; /* ✅ Abaixo dos modelos de mapa (100) e chats (200), acima do mapa (0-40) */
     background: rgba(255, 255, 255, 0.95);
     backdrop-filter: blur(10px);
     border-radius: 8px; /* ✅ MINIMALISTA: Bordas menos arredondadas (era 12px) */
@@ -4299,7 +4426,7 @@
     cursor: grabbing;
     transform: translateY(-50%) rotate(2deg) scale(1.05); /* ✅ DESKTOP: Manter centralização vertical + rotação */
     box-shadow: 0 16px 48px rgba(0, 0, 0, 0.3);
-    z-index: 155; /* ✅ Ligeiramente acima quando arrastando, mas ainda abaixo dos popups */
+    z-index: 55; /* ✅ Ligeiramente acima quando arrastando, mas ainda abaixo dos modelos e chats */
   }
   
   /* ✅ MINIMALISTA: Header arrastável menor */
@@ -4650,7 +4777,13 @@
   .context-popup .cp-input { font-family: var(--font-family-main); resize: vertical; }
   
   /* Tabs inside node-slider */
-  .node-tabs { display:flex; flex-direction:column; gap:8px; } /* Reduzido gap de 12px para 8px */
+  .node-tabs { 
+    display: flex; 
+    flex-direction: column; 
+    height: 100%; /* ✅ Ocupar toda altura do .node-slider-content */
+    min-height: 0; /* ✅ Essencial para flex funcionar com overflow */
+    gap: 8px; /* Reduzido gap de 12px para 8px */
+  }
   .node-tabs-header {
     display:flex; gap:6px; align-items:flex-start; padding-bottom:6px; border-bottom:1px solid var(--border);
     position: -webkit-sticky; position: sticky;
@@ -4708,10 +4841,9 @@
   
   .tab-content-body {
     padding: 16px;
-    padding-bottom: 120px !important; /* ✅ ✅ ESPAÇO MÁXIMO: Garantir que texto nunca seja cortado */
-    overflow-y: auto;
-    max-height: calc(100vh - 200px);
-    min-height: 400px;
+    padding-bottom: 40px !important; /* ✅ Espaço para leitura confortável */
+    height: auto; /* ✅ Altura automática baseada no conteúdo */
+    /* ✅ SEM overflow, max-height ou min-height - scroll é gerenciado pelo .node-tabs-body */
   }
   .node-tabs-header .tab.active { background: var(--accent); color:#fff; border-color: var(--accent); }
   .node-tabs-header .tab.download-tab { 
@@ -4732,6 +4864,19 @@
     cursor: pointer !important;
     text-decoration: none !important;
     border: none !important;
+    transition: opacity 0.3s ease, cursor 0.3s ease;
+  }
+  
+  /* ✅ Estado desabilitado para aba de exercícios */
+  .node-tabs-header .tab.download-tab:disabled {
+    opacity: 0.5 !important;
+    cursor: not-allowed !important;
+    pointer-events: auto !important; /* Manter clicável para mostrar mensagem */
+  }
+  
+  .node-tabs-header .tab.download-tab:disabled:hover {
+    background: linear-gradient(135deg, #dc3545, #c82333) !important;
+    transform: none !important;
   }
 
   /* Tab with action styles */
@@ -4913,28 +5058,29 @@
   /* ensure node-slider content scrolls well */
   .node-slider-body { 
     padding: 0 16px 16px; 
-    overflow: hidden; 
+    overflow: hidden; /* ✅ Sem scroll próprio - scroll apenas no .node-tabs-body */
     display: flex; 
     flex-direction: column; 
+    flex: 1; /* ✅ Ocupar espaço disponível */
+  }
+  
+  .node-tabs-header {
+    flex-shrink: 0; /* ✅ Não encolher - manter altura fixa */
   }
   
   .node-slider-body .node-tabs-body { 
-    max-height: calc(100vh - 120px); 
-    overflow-y: auto !important; /* ✅ SCROLL SEMPRE ATIVO */
+    flex: 1; /* ✅ Ocupar TODO espaço disponível restante */
+    min-height: 0; /* ✅ Essencial para flex funcionar com overflow */
+    overflow-y: auto !important; /* ✅ ÚNICO SCROLL - Todo conteúdo rola aqui */
     overflow-x: hidden; 
-    padding-right: 8px; 
-    /* ✅ REMOVIDO: height: 100% que estava causando corte de texto */
+    padding-right: 8px;
+    -webkit-overflow-scrolling: touch; /* ✅ Scroll suave no iOS */
   }
   
   /* ✅ CORREÇÃO: Permitir scroll completo do conteúdo das tabs */
   .node-tabs-body .tab-content {
     min-height: fit-content !important; /* ✅ Evita corte de conteúdo */
-    padding-bottom: 60px !important; /* ✅ ✅ ESPAÇO MÁXIMO: Muito mais espaço para leitura completa */
-  }
-  
-  .tab-content-body {
-    padding-bottom: 80px !important; /* ✅ ✅ ESPAÇO MÁXIMO: Espaço extra máximo no final */
-    min-height: fit-content !important; /* ✅ Ajusta altura ao conteúdo */
+    padding-bottom: 20px !important; /* ✅ Espaço adequado sem excesso */
   }
   
   /* Styles for Roteiro Curto Selector */
